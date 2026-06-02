@@ -22,8 +22,33 @@ const getWeatherAgent = tool({
             }
         });
         const result = res.data;
+        console.log('Tool Calling 🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖')
+        console.log('result', result);
+        console.log(`function called for this city ${city}`)
         return `
             The current weather in ${city} is ${result}
+        `
+    }
+})
+
+const sendEmailAgent = tool({
+    name: 'send_mail',
+    description: `
+        send an email to the user 
+        all the weather data's he asked for
+    `,
+    parameters: z.object({
+        to: z.string().email(),
+        subject: z.string(),
+        body: z.string(),
+    }),
+    execute: async ({ to, subject, body }: { to: string, subject: string, body: string }) => {
+        console.log('Tool Calling 🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖')
+        console.log('to', to);
+        console.log('subject', subject);
+        console.log('body', body);
+        return `
+            The email has been sent to ${to}
         `
     }
 })
@@ -45,4 +70,7 @@ async function main(query: string) {
     console.log(result.finalOutput);
 }
 
-main('Varanasi Weather, call');
+main(`Varanasi, Goa, Kashmir, lucknow, Gorakhpur, kolkata weathers of now, ( 
+    give all cities weather in bullet form
+    add emojis of weathers accordingly
+    )`);
