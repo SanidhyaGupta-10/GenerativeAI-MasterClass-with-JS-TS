@@ -30,15 +30,9 @@ async function chat(req: Request, res: Response) {
         );
 
         /**
-         * Setup retriever
+         * Perform similarity search directly on the vector store
          */
-        const retriever = vectorStore.asRetriever(
-            {
-                k: 2
-            }
-        );
-
-        const result = await retriever.invoke(query);
+        const result = await vectorStore.similaritySearch(query, 2);
         console.log('Service hitted it goes to llm=>')
         /**
          * Create response from context
