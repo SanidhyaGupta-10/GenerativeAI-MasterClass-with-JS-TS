@@ -61,6 +61,8 @@ This directory explores cutting-edge implementations and complex orchestration p
 *   **Own-AI-IDE**: An AI-powered code generation agent that takes a plain English prompt and **automatically scaffolds a complete working project** — creating every folder and file on disk. Powered by **Llama 3.3 70B** via Groq with enforced JSON-only output and support for multiple LLM providers.
 *   **Memory Management**: Techniques for efficient memory usage in AI pipelines and models, ensuring optimal performance and resource utilization.
 *   **OpenAI Agent SDK**: An AI-powered agent built with the **OpenAI Agent SDK** that runs locally via **Ollama**. Features real-time **tool/function calling** (e.g., weather lookups), Zod schema validation, and seamless switching between local LLMs and OpenAI cloud models.
+*   **Run-Anything-Locally**: Run powerful AI models entirely on your local machine using **Docker Model Runner (DMR)** — zero cloud, zero API keys, full privacy. Uses the standard OpenAI SDK with DMR's OpenAI-compatible local API.
+*   **OpenAI-Agent-SDK-Series**: A multi-part series diving deeper into the **OpenAI Agents SDK** with TypeScript and Ollama. Covers agent creation, execution pipelines, tool integration, and switching between local and cloud LLM backends.
 
 ---
 
