@@ -70,7 +70,12 @@ async function main(query: string) {
     console.log(result.finalOutput);
 }
 
-main(`Varanasi, Goa, Kashmir, lucknow, Gorakhpur, kolkata weathers of now, ( 
+main(`New York,
+     San Francisco, 
+     Dubai, 
+     Kyoto, 
+     Tokyo, 
+     Texas weathers of now, ( 
     give all cities weather in bullet form
     add emojis of weathers accordingly
     )`);
