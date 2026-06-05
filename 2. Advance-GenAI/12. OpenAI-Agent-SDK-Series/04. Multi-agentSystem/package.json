@@ -1,0 +1,20 @@
+{
+  "name": "04.-multi-agentsystem",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@openai/agents": "^0.11.6",
+    "axios": "^1.17.0",
+    "dotenv": "^17.4.2",
+    "openai": "^6.42.0",
+    "resend": "^6.12.4",
+    "zod": "^4.4.3"
+  }
+}
