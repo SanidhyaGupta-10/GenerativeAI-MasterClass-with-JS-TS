@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { Agent, run, setTracingDisabled, tool } from "@openai/agents";
 import { ollamaModel } from "./agent/ollama";
+import { groqModel } from "./agent/groq";
 import { z } from "zod";
 import fs from "node:fs/promises"
 
@@ -29,7 +30,7 @@ const processRefund = tool({
         customer_id: z.string(),
         reason: z.string().describe('Reason for refund'),
     }),
-    execute: async (plan_id, customer_id, reason) => {
+    execute: async ({ plan_id, customer_id, reason }) => {
         console.log('Tool Calling 🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖');
         const data = JSON.stringify({
             plan_id, customer_id, reason
@@ -50,21 +51,19 @@ const processRefund = tool({
 
 const refundAgent = new Agent({
     name: 'refund-agent',
-    model: ollamaModel,
-    instructions: `You are a refund agent for a fiber internet provider.
-    And Talk in English
-    When the user asks for a refund, use the refund tool to get the refund. 
-    Then, respond to the user with the best plan for them.`,
+    // model: ollamaModel,
+    model: groqModel,
+    instructions: `You are an expert at customer satisfaction.
+        Refund agent: process refund if user ask for refund using process refund tool
+        `,
     tools: [processRefund],
 });
 
 const salesAgent = new Agent({
     name: 'sales-agent',
     model: ollamaModel,
-    instructions: `You are a sales agent for a fiber internet provider.
-    And Talk in English
-    When the user asks for a plan, use the fetchAvailablePlans tool to get the available plans. 
-    Then, respond to the user with the best plan for them.`,
+    instructions: `You are an expert sales agent for an internet broadband comapny.
+        Talk to the user and help them with what they need`,
     tools: [
         fetchAvailablePlans, 
         refundAgent.asTool({
@@ -80,6 +79,6 @@ async function main(query: string) {
     console.log(result.finalOutput);
 }
 
-main(`Hey i had 399rs plan and i want refund its not working properly my customre 
-    id is cust123 and the reason is net is not working and also 
-    i'm shifting to new location so i want refund`)
+main(
+  `I had a plan 399. I need a refund right now. my cus id is cust123 because of I am shifting to a new place`
+);
