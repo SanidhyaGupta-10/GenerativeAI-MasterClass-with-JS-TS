@@ -8,11 +8,15 @@ import fs from "node:fs/promises"
 // This is will need if you are using ollama because 
 setTracingDisabled(true)
 
+// Plans Tool 
 const fetchAvailablePlans = tool({
     name: 'fetchAvailablePlans',
     description: 'fetch available plans',
-    parameters: z.object({}),
-    execute: async () => {
+    parameters: z.object({
+        // required empty object is mandatory if query is optional
+        query: z.string().optional().describe('Optional filter keyword for plans'),
+    }),
+    execute: async (_params) => {
         console.log('Tool Calling 🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖')
         return [
             { plan_id: 1, price_inr: '399', speed: '30mb/s', desc: 'Basic Plan'},
@@ -22,6 +26,7 @@ const fetchAvailablePlans = tool({
     }
 });
 
+// Refund Tool
 const processRefund = tool({
     name: 'process_Refund',
     description: 'You are expert in processing refunds. If user ask for refund process it',
@@ -30,6 +35,7 @@ const processRefund = tool({
         customer_id: z.string(),
         reason: z.string().describe('Reason for refund'),
     }),
+    
     execute: async ({ plan_id, customer_id, reason }) => {
         console.log('Tool Calling 🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖');
         const data = JSON.stringify({
@@ -47,33 +53,31 @@ const processRefund = tool({
             reason: reason,
         };
     }
-})
+});
 
+// Refund Agent
 const refundAgent = new Agent({
     name: 'refund-agent',
-    // model: ollamaModel,
     model: groqModel,
-    instructions: `You are an expert at customer satisfaction.
-        Refund agent: process refund if user ask for refund using process refund tool
-        `,
+    instructions: `You are a refund processing agent. When you receive a refund request, you MUST immediately call the process_Refund tool with the plan_id, customer_id, and reason provided. Do NOT ask follow-up questions. Just process the refund.`,
     tools: [processRefund],
 });
 
+// Sales Agent
 const salesAgent = new Agent({
     name: 'sales-agent',
-    model: ollamaModel,
-    instructions: `You are an expert sales agent for an internet broadband comapny.
-        Talk to the user and help them with what they need`,
+    model: groqModel,
+    instructions: `You are a sales agent for an internet broadband company. When a user requests a refund, you MUST immediately use the refund-expert tool. Do NOT ask follow-up questions if the user has already provided their customer ID, plan, and reason. Pass all the information directly to the refund-expert tool.`,
     tools: [
         fetchAvailablePlans, 
         refundAgent.asTool({
             toolName: 'refund-expert',
-            toolDescription: 'use this tool if user ask for refund'
+            toolDescription: 'Use this tool when a user asks for a refund. Pass the full user message to this tool.'
         })
     ],
-})
+});
 
-
+// Main Function
 async function main(query: string) {
     const result = await run(salesAgent, query);
     console.log(result.finalOutput);
