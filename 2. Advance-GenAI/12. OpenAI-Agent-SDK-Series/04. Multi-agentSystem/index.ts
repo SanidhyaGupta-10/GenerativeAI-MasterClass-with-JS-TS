@@ -80,5 +80,5 @@ async function main(query: string) {
 }
 
 main(
-  `I had a plan 399. I need a refund right now. my cus id is cust123 because of I am shifting to a new place`
+  `I had a plan_id: 1, price_inr: 399. I need a refund right now. my cus id is cust123 because of I am shifting to a new place`
 );
