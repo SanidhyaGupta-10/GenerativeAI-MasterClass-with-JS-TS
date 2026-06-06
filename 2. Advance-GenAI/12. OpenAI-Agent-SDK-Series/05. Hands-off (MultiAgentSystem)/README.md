@@ -1,235 +1,444 @@
-# 🤖 OpenAI Agent SDK Series
+<p align="center">
+  <img src="https://img.shields.io/badge/OpenAI-Agent_SDK-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI Agent SDK"/>
+  <img src="https://img.shields.io/badge/Runtime-Bun_v1.3-F7DF1E?style=for-the-badge&logo=bun&logoColor=black" alt="Bun Runtime"/>
+  <img src="https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
+  <img src="https://img.shields.io/badge/LLM-Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white" alt="Groq"/>
+  <img src="https://img.shields.io/badge/Validation-Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white" alt="Zod"/>
+</p>
 
-A hands-on, progressive series exploring the **OpenAI Agent SDK** (`@openai/agents`) with **TypeScript** and **Bun**. Each module builds on the previous one — from creating your first agent to orchestrating multi-agent systems with tool calling.
+<h1 align="center">🔄 Hands-off Multi-Agent System</h1>
 
-> **Runtime:** [Bun](https://bun.com) · **Language:** TypeScript · **LLM Providers:** Ollama (local) & Groq (cloud)
+<p align="center">
+  <strong>Build a fully autonomous multi-agent pipeline — a receptionist routes requests to specialized agents who act without human intervention.</strong><br/>
+  Part 5 of the <a href="https://github.com/openai/openai-agents-js">OpenAI Agent SDK</a> Series.
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-what-is-a-hands-off-multi-agent-system">What is Hands-off?</a> •
+  <a href="#%EF%B8%8F-architecture">Architecture</a> •
+  <a href="#-key-concepts">Key Concepts</a> •
+  <a href="#-troubleshooting">Troubleshooting</a>
+</p>
 
 ---
 
-## 📁 Series Overview
+## 📖 Overview
 
-| # | Module | Key Concept |
-|---|--------|-------------|
-| 01 | [First Agent Setup](#01-first-agent-setup) | Creating & running a basic agent with Ollama |
-| 02 | [Tool Calling in Agent](#02-tool-calling-in-agent) | Giving agents tools (weather API + email) |
-| 03 | [Structured AI Outputs with Zod](#03-structured-ai-outputs-with-zod) | Runtime validation & type-safe schemas |
-| 04 | [Multi-Agent System](#04-multi-agent-system) | Agent delegation, refund processing & file I/O |
+This project demonstrates a **hands-off multi-agent system** where a **Receptionist Agent** triages incoming user requests and delegates them to the right specialist — either a **Sales Agent** (for plan inquiries) or a **Refund Agent** (for refund processing). The entire pipeline runs autonomously using **handoffs**, **agent-as-tool**, and **tool calling** — no human in the loop.
+
+### ✨ Key Highlights
+
+| Feature | Description |
+|---------|-------------|
+| 🔄 **Handoffs** | Receptionist auto-routes requests to the correct specialist agent |
+| 🤖 **Agent-as-Tool** | Refund Agent is embedded as a tool inside the Sales Agent |
+| 🛠️ **Tool Calling** | Agents invoke tools (fetch plans, process refunds) autonomously |
+| 📄 **File I/O** | Refund data is persisted to `refunds.txt` via `fs.appendFile` |
+| ☁️ **Groq Cloud LLM** | All agents powered by `llama-3.3-70b-versatile` on Groq |
+| 🛡️ **RECOMMENDED_PROMPT_PREFIX** | Uses SDK's built-in prompt prefix for reliable handoff behavior |
+| ✅ **Zod Validation** | Type-safe tool parameters with runtime schema validation |
 
 ---
 
-## 01. First Agent Setup
+## 🧠 What is a Hands-off Multi-Agent System?
 
-> **Path:** `01. First-Agent-Setup/`
+In a **hands-off** architecture, the user sends a single request and the system handles everything autonomously — routing, delegation, tool execution, and response generation. No follow-up questions, no human approval steps.
 
-Your very first agent — connects to a local Ollama instance and answers a simple query.
+### Hands-off vs Interactive Multi-Agent
 
-### Files
+| Aspect | Interactive (Ch. 04) | Hands-off (Ch. 05) |
+|--------|:-------------------:|:------------------:|
+| User sends request | ✅ | ✅ |
+| Agent asks follow-ups | ✅ | ❌ |
+| Routing is automatic | ❌ | ✅ |
+| Uses `handoffs` | ❌ | ✅ |
+| Uses `agent.asTool()` | ✅ | ✅ |
+| Receptionist layer | ❌ | ✅ |
+| Fully autonomous | ❌ | ✅ |
 
-| File | Description |
-|------|-------------|
-| `index.ts` | Entry point — creates an Ollama client, wraps it in `OpenAIChatCompletionsModel`, defines an `Agent` with basic instructions, and runs a "Rust vs Go" query |
-| `package.json` | Dependencies: `@openai/agents`, `openai`, `dotenv`, `zod` |
-| `tsconfig.json` | TypeScript configuration |
-| `.gitignore` | Standard ignores |
+### How the Hands-off Pipeline Works
 
-### Key Concepts
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant R as 🏢 Receptionist
+    participant S as 💼 Sales Agent
+    participant RA as 💰 Refund Agent
+    participant T as 🔧 process_Refund Tool
+    participant F as 📄 refunds.txt
 
-- **`OpenAI` client** configured with Ollama's base URL (`http://localhost:11434/v1/`)
-- **`OpenAIChatCompletionsModel`** wraps the client + model name (`qwen2.5:1.5b`)
-- **`Agent`** with `name`, `model`, and `instructions`
-- **`run()`** executes the agent with a user query
-- **`setTracingDisabled(true)`** — required when using Ollama (no OpenAI tracing endpoint)
+    U->>R: "I want a refund for plan 1"
+    
+    Note over R: Analyzes request and<br/>decides to handoff
 
-### Run
-
-```bash
-cd "01. First-Agent-Setup"
-bun install
-bun run index.ts
+    R->>RA: handoff (refund request)
+    RA->>T: process_Refund({ plan_id, customer_id, reason })
+    T->>F: fs.appendFile(refund data)
+    T-->>RA: { refundIssued: true }
+    RA-->>U: "Refund processed successfully"
 ```
 
 ---
 
-## 02. Tool Calling in Agent
+## 🏗️ Architecture
 
-> **Path:** `02. Tool-Calling-in-Agent/`
+```mermaid
+flowchart TD
+    subgraph ENTRY["🎯 ENTRY POINT"]
+        direction TB
+        E1["index.ts<br/>Main runner + all definitions"]
+    end
 
-Extends the agent with **custom tools** — fetches real-time weather data from `wttr.in` and sends styled HTML emails via **Resend**.
+    subgraph RECEPTION["🏢 RECEPTIONIST LAYER"]
+        direction TB
+        R1["Receptionist Agent<br/>Routes via handoffs"]
+    end
 
-### Files
+    subgraph AGENTS["🤖 SPECIALIST AGENTS"]
+        direction LR
+        A1["💼 Sales Agent<br/>Plans & pricing queries"]
+        A2["💰 Refund Agent<br/>Refund processing"]
+    end
 
-| File | Description |
-|------|-------------|
-| `index.ts` | Entry point — creates a location-aware agent with dynamic instructions (India vs US style) |
-| `agent/ollama.ts` | Reusable Ollama client & model export (`qwen2.5:7b`) |
-| `agent-tools/tools.ts` | Defines two tools (`get_Weather`, `send_mail`), creates the `WeatherAgentData` agent, and runs a weather + email query |
-| `resend/resend.config.ts` | Resend SDK setup — initializes client with API key, exports `sendEmail()` function |
-| `resend/resend.template.ts` | Premium dark-themed HTML email template with weather icon, gradient header, and formatted body |
-| `package.json` | Dependencies: `@openai/agents`, `openai`, `axios`, `resend`, `dotenv`, `zod` |
-| `.env` | Environment variables: `RESEND_API_KEY`, `FROM_EMAIL`, `EMAIL_ADDRESS` |
+    subgraph TOOLS["🔧 TOOL LAYER"]
+        direction LR
+        T1["fetchAvailablePlans<br/>Returns broadband plans"]
+        T2["process_Refund<br/>Writes to refunds.txt"]
+        T3["refund-expert<br/>Refund Agent as Tool"]
+    end
 
-### Key Concepts
+    subgraph INFRA["⚙️ INFRASTRUCTURE"]
+        direction LR
+        I1["☁️ Groq API<br/>llama-3.3-70b-versatile"]
+        I2["📄 refunds.txt<br/>Persistent refund log"]
+    end
 
-- **`tool()`** function to define tools with `name`, `description`, `parameters` (Zod schema), and `execute`
-- **Dynamic instructions** — `instructions` as an `async function` that returns different prompts based on `location`
-- **Tool chaining** — agent fetches weather first, then sends the result via email
-- **Zod parameter schemas** — `z.object({ city: z.string() })` for type-safe tool inputs
-- **Destructured execute params** — `execute: async ({ city }) => { ... }`
+    E1 --> R1
+    R1 -->|handoff| A1
+    R1 -->|handoff| A2
+    A1 --> T1
+    A1 --> T3
+    T3 --> A2
+    A2 --> T2
+    T2 --> I2
+    R1 --> I1
+    A1 --> I1
+    A2 --> I1
 
-### Run
-
-```bash
-cd "02. Tool-Calling-in-Agent"
-bun install
-
-# For the basic agent with dynamic instructions:
-bun run index.ts
-
-# For the weather + email agent with tool calling:
-bun run agent-tools/tools.ts
+    style ENTRY fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#e2e8f0
+    style RECEPTION fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#e2e8f0
+    style AGENTS fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
+    style TOOLS fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
+    style INFRA fill:#0f172a,stroke:#ef4444,stroke-width:2px,color:#e2e8f0
 ```
 
-### Environment Variables Required
-
-```env
-RESEND_API_KEY=your_resend_api_key
-FROM_EMAIL=your_from_email@domain.com
-EMAIL_ADDRESS=your_recipient_email@domain.com
-```
-
----
-
-## 03. Structured AI Outputs with Zod
-
-> **Path:** `03. StructuredAIOutputswithZod/`
-
-A standalone module focused purely on **Zod** — the runtime validation library used across this series for tool parameter schemas and structured outputs.
-
-### Files
-
-| File | Description |
-|------|-------------|
-| `index.ts` | Three examples: ✅ valid data parsing, ❌ invalid data with error messages, 🔮 type inference with `z.infer` |
-| `package.json` | Minimal dependencies: `zod`, `@types/node` (no agent SDK needed) |
-
-### Key Concepts
-
-- **Why Zod?** — TypeScript types disappear at runtime; Zod validates at runtime
-- **`z.object()`** — defines the shape data must follow
-- **`.safeParse()`** — validates without throwing; returns `{ success, data }` or `{ success, error }`
-- **Validation rules** — `.min()`, `.email()`, `.enum()`
-- **`z.infer<typeof Schema>`** — generates TypeScript types from Zod schemas (one schema → validation + types)
-
-### Run
-
-```bash
-cd "03. StructuredAIOutputswithZod"
-bun install
-bun run index.ts
-```
-
----
-
-## 04. Multi-Agent System
-
-> **Path:** `04. Multi-agentSystem/`
-
-The most advanced module — a **multi-agent system** where a sales agent delegates to a refund agent. Demonstrates agent-as-tool, dual model providers (Ollama + Groq), and file I/O.
-
-### Files
-
-| File | Description |
-|------|-------------|
-| `index.ts` | Defines two tools (`fetchAvailablePlans`, `process_Refund`), two agents (`refundAgent`, `salesAgent`), wires refundAgent as a tool for salesAgent, and runs a refund query |
-| `agent/ollama.ts` | Ollama client & model export (`qwen2.5:7b`) — used by salesAgent |
-| `agent/groq.ts` | Groq client & model export (`openai/gpt-oss-20b`) — used by refundAgent |
-| `package.json` | Dependencies: `@openai/agents`, `openai`, `groq-sdk`, `axios`, `resend`, `dotenv`, `zod` |
-| `.env` | Environment variables: `GROQ_API_KEY` |
-
-### Architecture
+### Agent Routing Logic
 
 ```
 User Query
     │
     ▼
-┌──────────────┐
-│  Sales Agent │  (Ollama - qwen2.5:7b)
-│              │
-│  Tools:      │
-│  • fetchAvailablePlans
-│  • refund-expert ──────┐
-└──────────────┘         │
-                         ▼
-                ┌────────────────┐
-                │  Refund Agent  │  (Groq - gpt-oss-20b)
-                │                │
-                │  Tools:        │
-                │  • process_Refund → writes to refunds.txt
-                └────────────────┘
+┌──────────────────┐
+│   Receptionist   │  (Groq - llama-3.3-70b-versatile)
+│                  │
+│   Handoffs:      │
+│   • salesAgent ──────────┐
+│   • refundAgent ─────┐   │
+└──────────────────┘    │   │
+                        │   │
+          ┌─────────────┘   │
+          ▼                 ▼
+┌────────────────┐  ┌──────────────┐
+│  Refund Agent  │  │  Sales Agent │
+│                │  │              │
+│  Tools:        │  │  Tools:      │
+│  • process_Refund │  • fetchAvailablePlans
+│    → refunds.txt  │  • refund-expert (Agent as Tool)
+└────────────────┘  │    → delegates to Refund Agent
+                    └──────────────┘
 ```
 
-### Key Concepts
+### 📂 Project Structure
 
-- **`agent.asTool()`** — converts an agent into a tool that another agent can call
-- **Multi-model setup** — salesAgent uses local Ollama, refundAgent uses cloud Groq
-- **Tool with file I/O** — `process_Refund` appends refund data to `refunds.txt` using `fs.appendFile`
-- **Destructured parameters** — `execute: async ({ plan_id, customer_id, reason }) => { ... }`
-- **Agent delegation** — salesAgent decides when to hand off to refundAgent
+```
+05. Hands-off (MultiAgentSystem)/
+├── 🎯 index.ts              # Main entry — all agents, tools & runner
+├── 🤖 agent/
+│   └── groq.ts              # Groq client & model configuration
+├── 📄 refunds.txt            # Auto-generated refund log (created at runtime)
+├── 🔒 .env                   # Environment variables (GROQ_API_KEY)
+├── 📦 package.json           # Dependencies & project metadata
+├── ⚙️ tsconfig.json          # TypeScript compiler configuration
+├── 🔗 bun.lock               # Bun lockfile
+└── 📖 README.md              # You are here
+```
 
-### Run
+---
+
+## 🔑 Key Concepts
+
+### 1. Handoffs — Agent-to-Agent Routing
+
+The `handoffs` property lets an agent **transfer control** to another agent entirely. Unlike `asTool()`, a handoff replaces the current agent — the receiving agent takes over the conversation.
+
+```typescript
+const recepetionAgent = new Agent({
+    name: 'Receptionist',
+    model: groqModel,
+    instructions: `You have two agents available:
+      - salesAgent: Expert in handling plan and pricing queries.
+      - refundAgent: Expert in handling refund requests.
+      Use your judgement to decide which agent to handoff to.`,
+    handoffs: [salesAgent, refundAgent],  // 👈 Agent can transfer to either
+});
+```
+
+| Concept | `handoffs` | `asTool()` |
+|---------|:----------:|:----------:|
+| Control transfer | Full handoff — agent takes over | Sub-call — returns result |
+| Conversation owner | Receiving agent | Calling agent |
+| Use case | Routing/triage | Delegation for a specific task |
+| Response comes from | The target agent | The calling agent |
+
+### 2. RECOMMENDED_PROMPT_PREFIX — Reliable Handoffs
+
+The SDK provides a built-in prompt prefix that improves handoff reliability with non-OpenAI models:
+
+```typescript
+import { RECOMMENDED_PROMPT_PREFIX } from "@openai/agents-core/extensions"
+
+const agent = new Agent({
+    instructions: `
+    ${RECOMMENDED_PROMPT_PREFIX}
+    Your custom instructions here...
+    `,
+});
+```
+
+> **Why?** Non-OpenAI models (like Groq's Llama) may not natively understand handoff tool schemas. The `RECOMMENDED_PROMPT_PREFIX` adds system-level guidance that teaches the model how to properly invoke `transfer_to_*` tools.
+
+### 3. Agent-as-Tool — Nested Agent Delegation
+
+The Sales Agent embeds the Refund Agent as a **tool**, enabling a second delegation path:
+
+```typescript
+const salesAgent = new Agent({
+    tools: [
+        fetchAvailablePlans,
+        refundAgent.asTool({
+            toolName: 'refund-expert',
+            toolDescription: 'Use this tool when a user asks for a refund.'
+        })
+    ],
+});
+```
+
+This creates **two paths** to the Refund Agent:
+1. **Receptionist → Refund Agent** (direct handoff)
+2. **Receptionist → Sales Agent → Refund Agent** (nested via `asTool()`)
+
+### 4. Tool with File I/O — Persisting Data
+
+The `process_Refund` tool writes refund records to a local file:
+
+```typescript
+const processRefund = tool({
+    name: 'process_Refund',
+    parameters: z.object({
+        plan_id: z.string(),
+        customer_id: z.string(),
+        reason: z.string().describe('Reason for refund'),
+    }),
+    execute: async ({ plan_id, customer_id, reason }) => {
+        const data = JSON.stringify({ plan_id, customer_id, reason });
+        await fs.appendFile("./refunds.txt", data + "\n", "utf-8");
+        return { refundIssued: true, customer_id, plan_id, reason };
+    }
+});
+```
+
+Each run appends a JSON line to `refunds.txt`:
+```json
+{"plan_id":"1","customer_id":"cust100","reason":"shifting to a new place"}
+```
+
+### 5. Single Model for All Agents
+
+Unlike [Chapter 04](../04.%20Multi-agentSystem/) which used Ollama + Groq, this project uses **Groq for all agents** — simpler setup, consistent behavior:
+
+```typescript
+// agent/groq.ts
+import { OpenAIChatCompletionsModel } from '@openai/agents';
+import OpenAI from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+});
+
+export const groqModel = new OpenAIChatCompletionsModel(
+    client,
+    'llama-3.3-70b-versatile'  // Reliable tool-calling model
+);
+```
+
+> **💡 Tip:** `llama-3.3-70b-versatile` is recommended over smaller models for tool calling reliability. Smaller models may skip tool calls and return text responses instead.
+
+---
+
+## ⚡ Quick Start
+
+### Prerequisites
+
+| Requirement | Minimum Version | Purpose |
+|-------------|:--------------:|---------:|
+| [Bun](https://bun.sh) | v1.3+ | JavaScript/TypeScript runtime |
+| [Groq Account](https://console.groq.com) | Free tier | Cloud LLM inference |
+
+### Step 1 — Install Dependencies
 
 ```bash
-cd "04. Multi-agentSystem"
+cd "05. Hands-off (MultiAgentSystem)"
 bun install
-bun run index.ts
 ```
 
-### Environment Variables Required
+### Step 2 — Configure Environment Variables
+
+Create a `.env` file in the project root:
 
 ```env
-GROQ_API_KEY=your_groq_api_key
+GROQ_API_KEY=gsk_your_groq_api_key_here
 ```
 
----
+| Variable | Description |
+|----------|-------------|
+| `GROQ_API_KEY` | Your Groq API key ([get one here](https://console.groq.com/keys)) |
 
-## 🛠️ Prerequisites
-
-- [Bun](https://bun.com) runtime installed
-- [Ollama](https://ollama.com) running locally with required models pulled:
-  ```bash
-  ollama pull qwen2.5:1.5b   # Module 01
-  ollama pull qwen2.5:7b     # Modules 02 & 04
-  ```
-- **Groq API key** (for Module 04) — get one at [console.groq.com](https://console.groq.com)
-- **Resend API key** (for Module 02) — get one at [resend.com](https://resend.com)
-
----
-
-## 📦 Common Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `@openai/agents` | OpenAI Agent SDK — core framework |
-| `openai` | OpenAI client (used for Ollama & Groq compatibility) |
-| `zod` | Runtime schema validation & type inference |
-| `dotenv` | Environment variable loading |
-| `axios` | HTTP requests (weather API) |
-| `resend` | Email sending service |
-| `groq-sdk` | Groq cloud LLM provider |
-
----
-
-## 🚀 Quick Start
+### Step 3 — Run the Agent
 
 ```bash
-# Clone the repo
-git clone <repo-url>
-cd "12. OpenAI-Agent-SDK-Series"
-
-# Start with Module 01
-cd "01. First-Agent-Setup"
-bun install
 bun run index.ts
 ```
 
-Work through each module in order (01 → 04) for the best learning experience.
+### Expected Output
+
+```
+Tool Calling 🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖
+Refund processed successfully.
+```
+
+A `refunds.txt` file will be created with the refund record:
+```json
+{"plan_id":"1","customer_id":"cust100","reason":"shifting to a new place"}
+```
+
+---
+
+## 📦 Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@openai/agents` | ^0.11.6 | OpenAI Agents SDK — agent framework with handoffs & tools |
+| `openai` | ^6.42.0 | OpenAI client library (Groq compatibility layer) |
+| `zod` | ^4.4.3 | Runtime schema validation for tool parameters |
+| `dotenv` | ^17.4.2 | Load environment variables from `.env` file |
+| `groq-sdk` | ^1.2.1 | Groq cloud LLM provider |
+| `axios` | ^1.17.0 | HTTP client (inherited dependency) |
+| `resend` | ^6.12.4 | Email service (inherited dependency) |
+| `@types/bun` | latest | TypeScript type definitions for Bun runtime |
+
+---
+
+## 🛠️ Troubleshooting
+
+<details>
+<summary><strong>❌ Tool Call Validation Failed (400 Error)</strong></summary>
+
+```
+BadRequestError: 400 tool call validation failed: parameters for tool transfer_to_refund_agent did not...
+```
+
+**Cause:** The model is sending invalid parameters to the handoff tool (e.g., passing structured data instead of a string).
+
+**Fix:** Add `RECOMMENDED_PROMPT_PREFIX` to the receptionist agent's instructions:
+```typescript
+import { RECOMMENDED_PROMPT_PREFIX } from "@openai/agents-core/extensions"
+
+const agent = new Agent({
+    instructions: `${RECOMMENDED_PROMPT_PREFIX}\nYour instructions...`,
+});
+```
+</details>
+
+<details>
+<summary><strong>❌ Agent Not Calling Tools (Text Response Only)</strong></summary>
+
+```
+The refund request has been forwarded to the refund agent...
+```
+
+**Cause:** The model is generating a text response instead of invoking the tool. Common with smaller or weaker models.
+
+**Fix:** Switch to a model with reliable tool-calling support:
+```typescript
+// ❌ Unreliable for tool calling
+export const groqModel = new OpenAIChatCompletionsModel(client, 'openai/gpt-oss-20b');
+
+// ✅ Reliable tool calling
+export const groqModel = new OpenAIChatCompletionsModel(client, 'llama-3.3-70b-versatile');
+```
+</details>
+
+<details>
+<summary><strong>❌ refunds.txt Not Being Created</strong></summary>
+
+**Cause:** The `process_Refund` tool is never being called — the agent is responding with text instead of invoking the tool.
+
+**Fix:** Check the console for `Tool Calling 🤖🤖🤖...` log. If it's missing:
+1. Verify you're using `llama-3.3-70b-versatile` (not a smaller model)
+2. Add `RECOMMENDED_PROMPT_PREFIX` to the receptionist
+3. Make the refund agent's instructions more forceful
+</details>
+
+<details>
+<summary><strong>❌ Groq API Key Error</strong></summary>
+
+```
+Error: Invalid API key
+```
+
+**Cause:** Missing or incorrect `GROQ_API_KEY` in `.env`.
+
+**Fix:** Ensure your `.env` file has a valid key:
+```env
+GROQ_API_KEY=gsk_your_key_here
+```
+
+Get a key at [console.groq.com/keys](https://console.groq.com/keys).
+</details>
+
+---
+
+## 🧩 Series Navigation
+
+| # | Module | Topic | Status |
+|---|--------|-------|--------|
+| 01 | [First Agent Setup](../01.%20First-Agent-Setup/) | Basic agent creation with Ollama | ✅ Complete |
+| 02 | [Tool Calling in Agent](../02.%20Tool-Calling-in-Agent/) | Tools, weather API & email integration | ✅ Complete |
+| 03 | [Structured Outputs with Zod](../03.%20StructuredAIOutputswithZod/) | Zod validation & structured AI responses | ✅ Complete |
+| 04 | [Multi-Agent System](../04.%20Multi-agentSystem/) | Agent delegation & agent-as-tool | ✅ Complete |
+| 05 | **Hands-off Multi-Agent** *(you are here)* | Handoffs, receptionist routing & autonomous pipeline | ✅ Complete |
+
+---
+
+## 📜 License
+
+This project is part of the **OpenAI Agent SDK Series** — built for learning and experimentation.
+
+---
+
+<p align="center">
+  <sub>Built with ❤️ using OpenAI Agents SDK & Groq</sub><br/>
+  <sub>Let your agents handle it — hands off. 🔄</sub>
+</p>

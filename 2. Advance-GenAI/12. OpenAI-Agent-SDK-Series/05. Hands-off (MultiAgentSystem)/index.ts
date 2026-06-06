@@ -3,6 +3,7 @@ import { Agent, run, setTracingDisabled, tool } from "@openai/agents";
 import { groqModel } from "./agent/groq";
 import { z } from "zod";
 import fs from "node:fs/promises"
+import { RECOMMENDED_PROMPT_PREFIX } from "@openai/agents-core/extensions"
 
 // This is will need if you are using groq
 setTracingDisabled(true)
@@ -80,7 +81,9 @@ const salesAgent = new Agent({
 const recepetionAgent = new Agent({
     name: 'Receptionist',
     model: groqModel,
-    instructions: ` You have two agents available:-
+    instructions: `
+    ${RECOMMENDED_PROMPT_PREFIX}
+    You have two agents available:-
       - salesAgent:  Expert in handling user queries like all plans and pricing available.
       Good for new consumers.
       - refundAgent:  Expert in handling refund requests.
@@ -97,9 +100,9 @@ async function main(query: string) {
 }
 
 main(
-  `i had plan, 
-  plan_id: 2, 
-  i want to refund it, 
-  my customer id is 123456
-  reason:- too much expensive`
+  `i want to change my plan, 
+  current plan_id: 1, 
+  i want to change refund, 
+  my customer id is cust100
+  reason:- shifting to a new place`
 );
