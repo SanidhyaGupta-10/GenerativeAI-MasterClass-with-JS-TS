@@ -1,11 +1,10 @@
 import 'dotenv/config'
 import { Agent, run, setTracingDisabled, tool } from "@openai/agents";
-import { ollamaModel } from "./agent/ollama";
 import { groqModel } from "./agent/groq";
 import { z } from "zod";
 import fs from "node:fs/promises"
 
-// This is will need if you are using ollama because 
+// This is will need if you are using groq
 setTracingDisabled(true)
 
 // Plans Tool 
@@ -77,12 +76,30 @@ const salesAgent = new Agent({
     ],
 });
 
-// Main Function
+// recepetion agent
+const recepetionAgent = new Agent({
+    name: 'Receptionist',
+    model: groqModel,
+    instructions: ` You have two agents available:-
+      - salesAgent:  Expert in handling user queries like all plans and pricing available.
+      Good for new consumers.
+      - refundAgent:  Expert in handling refund requests.
+      Good for existing customers who want to refund.
+
+      Use your judgement to decide which agent to handoff the request to. Do 
+    `,
+    handoffs: [salesAgent, refundAgent],
+});
+
 async function main(query: string) {
-    const result = await run(salesAgent, query);
+    const result = await run(recepetionAgent, query);
     console.log(result.finalOutput);
 }
 
 main(
-  `I had a plan_id: 1, price_inr: 399. I need a refund right now. my cus id is cust123 because of I am shifting to a new place`
+  `i had plan, 
+  plan_id: 2, 
+  i want to refund it, 
+  my customer id is 123456
+  reason:- too much expensive`
 );
