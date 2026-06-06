@@ -133,32 +133,6 @@ flowchart TD
     style INFRA fill:#0f172a,stroke:#ef4444,stroke-width:2px,color:#e2e8f0
 ```
 
-### Agent Routing Logic
-
-```
-User Query
-    │
-    ▼
-┌──────────────────┐
-│   Receptionist   │  (Groq - llama-3.3-70b-versatile)
-│                  │
-│   Handoffs:      │
-│   • salesAgent ──────────┐
-│   • refundAgent ─────┐   │
-└──────────────────┘    │   │
-                        │   │
-          ┌─────────────┘   │
-          ▼                 ▼
-┌────────────────┐  ┌──────────────┐
-│  Refund Agent  │  │  Sales Agent │
-│                │  │              │
-│  Tools:        │  │  Tools:      │
-│  • process_Refund │  • fetchAvailablePlans
-│    → refunds.txt  │  • refund-expert (Agent as Tool)
-└────────────────┘  │    → delegates to Refund Agent
-                    └──────────────┘
-```
-
 ### 📂 Project Structure
 
 ```
