@@ -1,0 +1,5 @@
+{"plan_id":"2","customer_id":"123456","reason":"too much expensive"}
+{"plan_id":"2","customer_id":"123456","reason":"too much expensive"}
+{"plan_id":"3","customer_id":"cust1200","reason":"shifting to a new place"}
+{"plan_id":"1","customer_id":"cust1200","reason":"shifting to a new place"}
+{"plan_id":"1","customer_id":"cust100","reason":"shifting to a new place"}
