@@ -10,5 +10,5 @@ const ollamaClient = new OpenAI({
 // 2. Configure the model wrapper with the custom client
 export const ollamaModel = new OpenAIChatCompletionsModel(
     ollamaClient, // 1st: The OpenAI client instance
-    'llama3.1:latest'    // 2nd: The model name string
+    'qwen2.5:7b'    // 2nd: The model name string
 );

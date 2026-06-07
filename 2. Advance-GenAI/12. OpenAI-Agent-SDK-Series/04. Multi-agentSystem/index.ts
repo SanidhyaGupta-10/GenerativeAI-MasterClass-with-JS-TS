@@ -66,7 +66,7 @@ const refundAgent = new Agent({
 // Sales Agent
 const salesAgent = new Agent({
     name: 'sales-agent',
-    model: groqModel,
+    model: ollamaModel,
     instructions: `You are a sales agent for an internet broadband company. When a user requests a refund, you MUST immediately use the refund-expert tool. Do NOT ask follow-up questions if the user has already provided their customer ID, plan, and reason. Pass all the information directly to the refund-expert tool.`,
     tools: [
         fetchAvailablePlans, 
