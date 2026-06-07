@@ -1,7 +1,13 @@
-import { Agent, run, setTracingDisabled, InputGuardrailTripwireTriggered } from '@openai/agents';
-import type { InputGuardrail } from '@openai/agents';
 import 'dotenv/config';
 import { groqModel } from './agent/groq';
+import {
+    Agent,
+    run,
+    setTracingDisabled,
+    type InputGuardrail,
+    InputGuardrailTripwireTriggered
+} from '@openai/agents';
+
 setTracingDisabled(true);
 
 // Math-related keywords to validate against
@@ -69,4 +75,4 @@ async function main(query: string) {
 }
 
 // Test with an off-topic query (should be rejected)
-main('Give me While Loop example');
+main('What is the value of PI? and multiply it by 1000 * 1000');
