@@ -26,7 +26,7 @@
 
 ## 📖 Overview
 
-This repository is a **6-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
+This repository is a **7-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
 
 > **Runtime:** [Bun](https://bun.sh) · **Language:** TypeScript · **LLM Providers:** Ollama (local) & Groq (cloud)
 
@@ -40,6 +40,7 @@ This repository is a **6-part learning series** that takes you from zero to prod
 | Multi-agent delegation with `asTool()` | 04 |
 | Autonomous handoffs & receptionist routing | 05 |
 | Input guardrails & tripwire safety patterns | 06 |
+| LLM-based output guardrails & SQL safety validation | 07 |
 
 ---
 
@@ -52,6 +53,7 @@ flowchart LR
     C --> D["04\nMulti-Agent\nSystem"]
     D --> E["05\nHands-off\nMulti-Agent"]
     E --> F["06\nInput\nGuardrails"]
+    F --> G["07\nOutput\nGuardrails"]
 
     style A fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style B fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -59,6 +61,7 @@ flowchart LR
     style D fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#e2e8f0
     style E fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#e2e8f0
     style F fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#e2e8f0
+    style G fill:#1e293b,stroke:#14b8a6,stroke-width:2px,color:#e2e8f0
 ```
 
 | # | Module | Key Concept | LLM Provider | Status |
@@ -69,6 +72,7 @@ flowchart LR
 | 04 | [Multi-Agent System](./04.%20Multi-agentSystem/) | Agent delegation, `asTool()` & file I/O | Ollama + Groq | ✅ |
 | 05 | [Hands-off Multi-Agent](./05.%20Hands-off%20(MultiAgentSystem)/) | Handoffs, receptionist routing & autonomous pipeline | Groq | ✅ |
 | 06 | [Input Guardrails](./06.%20InputGuardrailsInAgents/) | Input validation, tripwires & safety patterns | Groq | ✅ |
+| 07 | [Output Guardrails](./07.%20OutputGuardrailsInAgents/) | LLM-based guardrail agent, SQL safety & structured output | Groq | ✅ |
 
 ---
 
@@ -209,6 +213,32 @@ cd "06. InputGuardrailsInAgents" && bun install && bun run index.ts
 
 ---
 
+### 07. Output Guardrails in Agents
+
+> **Path:** [`07. OutputGuardrailsInAgents/`](./07.%20OutputGuardrailsInAgents/)
+
+Level up from keyword-based guardrails — use a dedicated **LLM-powered guardrail agent** to intelligently validate SQL queries. The guardrail agent classifies queries as safe (read-only) or unsafe (modify/delete/drop) with structured Zod output.
+
+| Concept | Description |
+|---------|-------------|
+| LLM-based guardrail | A dedicated agent classifies input safety — no keyword lists |
+| Dual Zod schemas | Guardrail output (`isSafe` + `reason`) and agent output (`sqlQuery` + `explanation`) |
+| `outputType` | Force agent responses into a strict Zod schema |
+| Model compatibility | Structured outputs require `json_schema`-compatible models |
+
+```typescript
+// Guardrail agent returns { isSafe: true } → SQL agent runs
+// Guardrail agent returns { isSafe: false, reason: "..." } → tripwire blocks
+```
+
+```bash
+cd "07. OutputGuardrailsInAgents" && bun install && bun run index.ts
+```
+
+**Requires:** `GROQ_API_KEY` in `.env`
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```mermaid
@@ -255,7 +285,14 @@ flowchart TD
         C6G -->|validate| C6A
     end
 
-    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06
+    subgraph CH07["07 — Output Guardrails"]
+        direction TB
+        C7G["🛡️ Guardrail Agent"]
+        C7A["🤖 SQL Agent"]
+        C7G -->|LLM classify| C7A
+    end
+
+    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07
 
     style CH01 fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style CH02 fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -263,6 +300,7 @@ flowchart TD
     style CH04 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#e2e8f0
     style CH05 fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#e2e8f0
     style CH06 fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#e2e8f0
+    style CH07 fill:#1e293b,stroke:#14b8a6,stroke-width:2px,color:#e2e8f0
 ```
 
 ---
@@ -298,7 +336,11 @@ flowchart TD
 │   ├── index.ts
 │   └── agent/groq.ts
 │
-└── 06. InputGuardrailsInAgents/               # 🛡️ Input guardrails & tripwires
+├── 06. InputGuardrailsInAgents/               # 🛡️ Input guardrails & tripwires
+│   ├── index.ts
+│   └── agent/groq.ts
+│
+└── 07. OutputGuardrailsInAgents/              # 🛡️ LLM-based output guardrails
     ├── index.ts
     └── agent/groq.ts
 ```
@@ -324,7 +366,7 @@ bun run index.ts
 
 ### Step 3 — Work Through Each Chapter
 
-Progress through the chapters in order (01 → 06) for the best learning experience. Each chapter builds on concepts from the previous one.
+Progress through the chapters in order (01 → 07) for the best learning experience. Each chapter builds on concepts from the previous one.
 
 ---
 
@@ -334,7 +376,7 @@ Progress through the chapters in order (01 → 06) for the best learning experie
 |-------------|:--------------:|:-------:|---------| 
 | [Bun](https://bun.sh) | v1.3+ | All | JavaScript/TypeScript runtime |
 | [Ollama](https://ollama.com) | Latest | 01–04 | Local LLM inference server |
-| [Groq Account](https://console.groq.com) | Free tier | 04–06 | Cloud LLM provider |
+| [Groq Account](https://console.groq.com) | Free tier | 04–07 | Cloud LLM provider |
 | [Resend Account](https://resend.com) | Free tier | 02 | Email delivery service |
 
 ### Ollama Models Required
@@ -348,7 +390,7 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 
 | Variable | Chapters | Description |
 |----------|:--------:|-------------|
-| `GROQ_API_KEY` | 04, 05, 06 | Groq API key ([get one](https://console.groq.com/keys)) |
+| `GROQ_API_KEY` | 04, 05, 06, 07 | Groq API key ([get one](https://console.groq.com/keys)) |
 | `RESEND_API_KEY` | 02 | Resend API key ([get one](https://resend.com/api-keys)) |
 | `FROM_EMAIL` | 02 | Sender email for Resend |
 | `EMAIL_ADDRESS` | 02 | Recipient email for weather reports |
@@ -361,7 +403,7 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 |---------|---------|:--------:|
 | `@openai/agents` | OpenAI Agent SDK — core framework | All |
 | `openai` | OpenAI client (Ollama & Groq compatibility) | All |
-| `zod` | Runtime schema validation & type inference | 02–06 |
+| `zod` | Runtime schema validation & type inference | 02–07 |
 | `dotenv` | Environment variable loading | All |
 | `axios` | HTTP client (weather API) | 02, 04 |
 | `resend` | Email delivery service | 02 |
@@ -377,9 +419,10 @@ Chapter 03: Agent + Zod ← structured, validated outputs
 Chapter 04: Agent + Agent (asTool) ← multi-agent delegation
 Chapter 05: Agent + Agent (handoffs) ← autonomous routing
 Chapter 06: Agent + Guardrails ← input safety & validation
+Chapter 07: Agent + LLM Guardrail ← intelligent output validation
 ```
 
-Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 06, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
+Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 07, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
 
 ---
 
