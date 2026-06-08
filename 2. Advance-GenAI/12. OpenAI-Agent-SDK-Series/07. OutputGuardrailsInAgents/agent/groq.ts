@@ -9,5 +9,5 @@ const client = new OpenAI({
 
 export const groqModel = new OpenAIChatCompletionsModel(
     client,
-    'llama-3.3-70b-versatile'
+    'openai/gpt-oss-120b'
 )
