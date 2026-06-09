@@ -9,7 +9,7 @@ import OpenAI from "openai";
 setTracingDisabled(true)
 
 const ollamaClient = new OpenAI({
-    baseURL: 'http://localhost:11434/v1/',
+    baseURL: 'http://localhost:11434/v1',
     apiKey: 'ollama', // Required by the SDK but ignored by Ollama
     dangerouslyAllowBrowser: true
 });
@@ -27,6 +27,7 @@ const firstAgent = new Agent({
 })
 
 async function main() {
+    console.log('Agent Hit the API..')
     const result = await run(firstAgent, "Which is best Rust vs Go ?  which one to choose?");
     console.log(result.finalOutput);
 }
