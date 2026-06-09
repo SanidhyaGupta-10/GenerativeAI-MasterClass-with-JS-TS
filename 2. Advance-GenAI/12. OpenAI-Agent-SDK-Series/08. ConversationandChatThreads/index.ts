@@ -5,12 +5,15 @@ import {
     Agent,
     run,
     tool,
+    type AgentInputItem,
     setTracingDisabled,
     type InputGuardrail,
     InputGuardrailTripwireTriggered,
-    } from '@openai/agents';
+} from '@openai/agents';
 
 setTracingDisabled(true);
+
+let threads: AgentInputItem [] = [];
 
 const executeSQL = tool({
   name: 'execute_sql',
@@ -85,19 +88,25 @@ const sqlAgent = new Agent({
       created_at TIMESTAMP DEFAULT NOW()
     );
     `,
-  outputType: z.object({
-    sqlQuery: z.string().optional().describe('sql query if generating one'),
-    explanation: z.string().optional().describe('explanation of the query if user asked for one'),
-  }),
   inputGuardrails: [sqlGuardrail],
 });
 
 async function main(q: string) {
     console.log(`Running SQL agent with query: ${q}...\n`);
-
     try {
-        const result = await run(sqlAgent, q);
-        console.log('Result:', result.finalOutput);
+        // add message from user
+        threads.push({
+            type: 'message',
+            role: 'user',
+            content: q,
+        })
+        // execute agent
+        const result = await run(sqlAgent, threads);
+        // Update history with AI response
+        threads = result.history;
+
+        // console.log('Result:', JSON.stringify(result.history, null, 2));
+        console.log('Final Output:', result.finalOutput, null, 2);
     } catch (e) {
         if (e instanceof InputGuardrailTripwireTriggered) {
             console.log(`⛔ Invalid Input: Rejected because ${e.message}`);
@@ -107,4 +116,6 @@ async function main(q: string) {
     }
 }
 
-main(`How this query works:-  SELECT * FROM users;`);
+main(`Hiii My name is Sanidhya-Gupta`).then(() => {
+  main(`Get all the users of my name SELECT * FROM users;`)
+})
