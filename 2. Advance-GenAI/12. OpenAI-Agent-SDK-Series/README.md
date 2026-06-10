@@ -4,6 +4,7 @@
   <img src="https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/LLM-Ollama_Local-FF6F61?style=for-the-badge&logo=ollama&logoColor=white" alt="Ollama"/>
   <img src="https://img.shields.io/badge/LLM-Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white" alt="Groq"/>
+  <img src="https://img.shields.io/badge/LLM-OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI"/>
   <img src="https://img.shields.io/badge/Validation-Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white" alt="Zod"/>
 </p>
 
@@ -26,9 +27,9 @@
 
 ## 📖 Overview
 
-This repository is an **8-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
+This repository is a **9-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
 
-> **Runtime:** [Bun](https://bun.sh) · **Language:** TypeScript · **LLM Providers:** Ollama (local) & Groq (cloud)
+> **Runtime:** [Bun](https://bun.sh) · **Language:** TypeScript · **LLM Providers:** Ollama (local), Groq (cloud) & OpenAI
 
 ### ✨ What You'll Learn
 
@@ -42,6 +43,7 @@ This repository is an **8-part learning series** that takes you from zero to pro
 | Input guardrails & tripwire safety patterns | 06 |
 | LLM-based output guardrails & SQL safety validation | 07 |
 | Multi-turn conversations, chat threads & stateful agents | 08 |
+| Server-side conversations via OpenAI Conversations API | 09 |
 
 ---
 
@@ -56,6 +58,7 @@ flowchart LR
     E --> F["06\nInput\nGuardrails"]
     F --> G["07\nOutput\nGuardrails"]
     G --> H["08\nConversation\n& Threads"]
+    H --> I["09\nServer-Side\nConversations"]
 
     style A fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style B fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -65,6 +68,7 @@ flowchart LR
     style F fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#e2e8f0
     style G fill:#1e293b,stroke:#14b8a6,stroke-width:2px,color:#e2e8f0
     style H fill:#1e293b,stroke:#06b6d4,stroke-width:2px,color:#e2e8f0
+    style I fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#e2e8f0
 ```
 
 | # | Module | Key Concept | LLM Provider | Status |
@@ -77,6 +81,7 @@ flowchart LR
 | 06 | [Input Guardrails](./06.%20InputGuardrailsInAgents/) | Input validation, tripwires & safety patterns | Groq | ✅ |
 | 07 | [Output Guardrails](./07.%20OutputGuardrailsInAgents/) | LLM-based guardrail agent, SQL safety & structured output | Groq | ✅ |
 | 08 | [Conversation & Chat Threads](./08.%20ConversationandChatThreads/) | Multi-turn conversations, history management & stateful agents | Groq | ✅ |
+| 09 | [Server-Side Conversations](./09.%20ServerConversation-ChatThreads/) | OpenAI Conversations API, server-managed threads & persistent memory | OpenAI | ✅ |
 
 ---
 
@@ -271,6 +276,33 @@ cd "08. ConversationandChatThreads" && bun install && bun start
 
 ---
 
+### 09. Server-Side Conversations & Chat Threads
+
+> **Path:** [`09. ServerConversation-ChatThreads/`](./09.%20ServerConversation-ChatThreads/)
+
+Upgrade from client-side history to **OpenAI's native Conversations API** — the server stores the full chat history, and you simply pass a `conversationId` to each `run()` call. No manual state management needed.
+
+| Concept | Description |
+|---------|-------------|
+| `client.conversations.create()` | Create a persistent server-side conversation thread |
+| `conversationId` | Pass to `run()` — OpenAI stores & retrieves history automatically |
+| Server-managed memory | No `threads` array, no `result.history` — server handles it |
+| Persistent across restarts | Reuse a `conversationId` to resume any past conversation |
+
+```typescript
+// Create once, reuse forever
+const conv = await client.conversations.create({});
+const result = await run(sqlAgent, query, { conversationId: conv.id });
+```
+
+```bash
+cd "09. ServerConversation-ChatThreads" && bun install && bun start
+```
+
+**Requires:** `OPENAI_API_KEY` in `.env`
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```mermaid
@@ -331,7 +363,14 @@ flowchart TD
         C8T -->|stateful| C8A
     end
 
-    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08
+    subgraph CH09["09 — Server Conversations"]
+        direction TB
+        C9C["🧵 Conversations API"]
+        C9A["🤖 SQL Agent"]
+        C9C -->|conversationId| C9A
+    end
+
+    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08 --> CH09
 
     style CH01 fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style CH02 fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -341,6 +380,7 @@ flowchart TD
     style CH06 fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#e2e8f0
     style CH07 fill:#1e293b,stroke:#14b8a6,stroke-width:2px,color:#e2e8f0
     style CH08 fill:#1e293b,stroke:#06b6d4,stroke-width:2px,color:#e2e8f0
+    style CH09 fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#e2e8f0
 ```
 
 ---
@@ -384,7 +424,11 @@ flowchart TD
 │   ├── index.ts
 │   └── agent/groq.ts
 │
-└── 08. ConversationandChatThreads/            # 💬 Multi-turn chat threads
+├── 08. ConversationandChatThreads/            # 💬 Multi-turn chat threads
+│   ├── index.ts
+│   └── agent/groq.ts
+│
+└── 09. ServerConversation-ChatThreads/        # 🧵 Server-side conversations
     ├── index.ts
     └── agent/groq.ts
 ```
@@ -410,7 +454,7 @@ bun run index.ts
 
 ### Step 3 — Work Through Each Chapter
 
-Progress through the chapters in order (01 → 08) for the best learning experience. Each chapter builds on concepts from the previous one.
+Progress through the chapters in order (01 → 09) for the best learning experience. Each chapter builds on concepts from the previous one.
 
 ---
 
@@ -421,6 +465,7 @@ Progress through the chapters in order (01 → 08) for the best learning experie
 | [Bun](https://bun.sh) | v1.3+ | All | JavaScript/TypeScript runtime |
 | [Ollama](https://ollama.com) | Latest | 01–04 | Local LLM inference server |
 | [Groq Account](https://console.groq.com) | Free tier | 04–08 | Cloud LLM provider |
+| [OpenAI Account](https://platform.openai.com) | API key | 09 | OpenAI LLM & Conversations API |
 | [Resend Account](https://resend.com) | Free tier | 02 | Email delivery service |
 
 ### Ollama Models Required
@@ -435,6 +480,7 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 | Variable | Chapters | Description |
 |----------|:--------:|-------------|
 | `GROQ_API_KEY` | 04, 05, 06, 07, 08 | Groq API key ([get one](https://console.groq.com/keys)) |
+| `OPENAI_API_KEY` | 09 | OpenAI API key ([get one](https://platform.openai.com/api-keys)) |
 | `RESEND_API_KEY` | 02 | Resend API key ([get one](https://resend.com/api-keys)) |
 | `FROM_EMAIL` | 02 | Sender email for Resend |
 | `EMAIL_ADDRESS` | 02 | Recipient email for weather reports |
@@ -447,7 +493,7 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 |---------|---------|:--------:|
 | `@openai/agents` | OpenAI Agent SDK — core framework | All |
 | `openai` | OpenAI client (Ollama & Groq compatibility) | All |
-| `zod` | Runtime schema validation & type inference | 02–08 |
+| `zod` | Runtime schema validation & type inference | 02–09 |
 | `dotenv` | Environment variable loading | All |
 | `axios` | HTTP client (weather API) | 02, 04 |
 | `resend` | Email delivery service | 02 |
@@ -465,9 +511,10 @@ Chapter 05: Agent + Agent (handoffs) ← autonomous routing
 Chapter 06: Agent + Guardrails ← input safety & validation
 Chapter 07: Agent + LLM Guardrail ← intelligent output validation
 Chapter 08: Agent + Threads ← multi-turn stateful conversations
+Chapter 09: Agent + Conversations API ← server-managed persistent threads
 ```
 
-Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 08, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
+Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 09, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
 
 ---
 
@@ -478,6 +525,6 @@ This project is built for **learning and experimentation**. Feel free to use, mo
 ---
 
 <p align="center">
-  <sub>Built with ❤️ using OpenAI Agents SDK, Ollama & Groq</sub><br/>
-  <sub>From your first agent to production-ready conversations. 🤖→💬</sub>
+  <sub>Built with ❤️ using OpenAI Agents SDK, Ollama, Groq & OpenAI</sub><br/>
+  <sub>From your first agent to server-managed conversations. 🤖→🧵</sub>
 </p>
