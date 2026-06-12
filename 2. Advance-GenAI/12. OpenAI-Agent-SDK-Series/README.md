@@ -27,7 +27,7 @@
 
 ## 📖 Overview
 
-This repository is a **9-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
+This repository is a **10-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
 
 > **Runtime:** [Bun](https://bun.sh) · **Language:** TypeScript · **LLM Providers:** Ollama (local), Groq (cloud) & OpenAI
 
@@ -44,6 +44,7 @@ This repository is a **9-part learning series** that takes you from zero to prod
 | LLM-based output guardrails & SQL safety validation | 07 |
 | Multi-turn conversations, chat threads & stateful agents | 08 |
 | Server-side conversations via OpenAI Conversations API | 09 |
+| Runtime-local context management & typed `RunContext` | 10 |
 
 ---
 
@@ -59,6 +60,7 @@ flowchart LR
     F --> G["07\nOutput\nGuardrails"]
     G --> H["08\nConversation\n& Threads"]
     H --> I["09\nServer-Side\nConversations"]
+    I --> J["10\nRuntime-Local\nContext"]
 
     style A fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style B fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -69,6 +71,7 @@ flowchart LR
     style G fill:#1e293b,stroke:#14b8a6,stroke-width:2px,color:#e2e8f0
     style H fill:#1e293b,stroke:#06b6d4,stroke-width:2px,color:#e2e8f0
     style I fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#e2e8f0
+    style J fill:#1e293b,stroke:#f97316,stroke-width:2px,color:#e2e8f0
 ```
 
 | # | Module | Key Concept | LLM Provider | Status |
@@ -82,6 +85,7 @@ flowchart LR
 | 07 | [Output Guardrails](./07.%20OutputGuardrailsInAgents/) | LLM-based guardrail agent, SQL safety & structured output | Groq | ✅ |
 | 08 | [Conversation & Chat Threads](./08.%20ConversationandChatThreads/) | Multi-turn conversations, history management & stateful agents | Groq | ✅ |
 | 09 | [Server-Side Conversations](./09.%20ServerConversation-ChatThreads/) | OpenAI Conversations API, server-managed threads & persistent memory | OpenAI | ✅ |
+| 10 | [Runtime-Local Context Management](./10.%20RuntimeLocal-ContextManagement/) | Typed `RunContext`, in-memory threads & context injection | OpenAI | ✅ |
 
 ---
 
@@ -303,6 +307,32 @@ cd "09. ServerConversation-ChatThreads" && bun install && bun start
 
 ---
 
+### 10. Runtime-Local Context Management
+
+> **Path:** [`10. RuntimeLocal-ContextManagement/`](./10.%20RuntimeLocal-ContextManagement/)
+
+Ditch external conversation storage — manage context **in-memory** using the SDK's typed `RunContext<T>`. Define a custom context interface, inject user data, and let tools access it at runtime with full type safety.
+
+| Concept | Description |
+|---------|-------------|
+| `RunContext<T>` | Generic typed context passed through the entire agent pipeline |
+| Custom context interface | Define `MyContext` with `userId`, `userName` & async helpers |
+| Context in tools | Tools receive `ctx: RunContext<MyContext>` for data access |
+| In-memory threads | Stateless — history lives only in the running process |
+
+```typescript
+// Define context → pass to run() → tools access it automatically
+const result = await run(agent, query, { context: myCtx });
+```
+
+```bash
+cd "10. RuntimeLocal-ContextManagement" && bun install && bun run index.ts
+```
+
+**Requires:** `OPENAI_API_KEY` in `.env`
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```mermaid
@@ -370,7 +400,14 @@ flowchart TD
         C9C -->|conversationId| C9A
     end
 
-    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08 --> CH09
+    subgraph CH10["10 — Runtime Context"]
+        direction TB
+        C10C["🧩 RunContext"]
+        C10A["🤖 Query Agent"]
+        C10C -->|typed context| C10A
+    end
+
+    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08 --> CH09 --> CH10
 
     style CH01 fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style CH02 fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -381,6 +418,7 @@ flowchart TD
     style CH07 fill:#1e293b,stroke:#14b8a6,stroke-width:2px,color:#e2e8f0
     style CH08 fill:#1e293b,stroke:#06b6d4,stroke-width:2px,color:#e2e8f0
     style CH09 fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#e2e8f0
+    style CH10 fill:#1e293b,stroke:#f97316,stroke-width:2px,color:#e2e8f0
 ```
 
 ---
@@ -428,9 +466,13 @@ flowchart TD
 │   ├── index.ts
 │   └── agent/groq.ts
 │
-└── 09. ServerConversation-ChatThreads/        # 🧵 Server-side conversations
+├── 09. ServerConversation-ChatThreads/        # 🧵 Server-side conversations
+│   ├── index.ts
+│   └── agent/groq.ts
+│
+└── 10. RuntimeLocal-ContextManagement/        # 🧩 Runtime-local context
     ├── index.ts
-    └── agent/groq.ts
+    └── agent/openai.ts
 ```
 
 ---
@@ -454,7 +496,7 @@ bun run index.ts
 
 ### Step 3 — Work Through Each Chapter
 
-Progress through the chapters in order (01 → 09) for the best learning experience. Each chapter builds on concepts from the previous one.
+Progress through the chapters in order (01 → 10) for the best learning experience. Each chapter builds on concepts from the previous one.
 
 ---
 
@@ -465,7 +507,7 @@ Progress through the chapters in order (01 → 09) for the best learning experie
 | [Bun](https://bun.sh) | v1.3+ | All | JavaScript/TypeScript runtime |
 | [Ollama](https://ollama.com) | Latest | 01–04 | Local LLM inference server |
 | [Groq Account](https://console.groq.com) | Free tier | 04–08 | Cloud LLM provider |
-| [OpenAI Account](https://platform.openai.com) | API key | 09 | OpenAI LLM & Conversations API |
+| [OpenAI Account](https://platform.openai.com) | API key | 09, 10 | OpenAI LLM & Conversations API |
 | [Resend Account](https://resend.com) | Free tier | 02 | Email delivery service |
 
 ### Ollama Models Required
@@ -480,7 +522,7 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 | Variable | Chapters | Description |
 |----------|:--------:|-------------|
 | `GROQ_API_KEY` | 04, 05, 06, 07, 08 | Groq API key ([get one](https://console.groq.com/keys)) |
-| `OPENAI_API_KEY` | 09 | OpenAI API key ([get one](https://platform.openai.com/api-keys)) |
+| `OPENAI_API_KEY` | 09, 10 | OpenAI API key ([get one](https://platform.openai.com/api-keys)) |
 | `RESEND_API_KEY` | 02 | Resend API key ([get one](https://resend.com/api-keys)) |
 | `FROM_EMAIL` | 02 | Sender email for Resend |
 | `EMAIL_ADDRESS` | 02 | Recipient email for weather reports |
@@ -493,7 +535,7 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 |---------|---------|:--------:|
 | `@openai/agents` | OpenAI Agent SDK — core framework | All |
 | `openai` | OpenAI client (Ollama & Groq compatibility) | All |
-| `zod` | Runtime schema validation & type inference | 02–09 |
+| `zod` | Runtime schema validation & type inference | 02–10 |
 | `dotenv` | Environment variable loading | All |
 | `axios` | HTTP client (weather API) | 02, 04 |
 | `resend` | Email delivery service | 02 |
@@ -512,9 +554,10 @@ Chapter 06: Agent + Guardrails ← input safety & validation
 Chapter 07: Agent + LLM Guardrail ← intelligent output validation
 Chapter 08: Agent + Threads ← multi-turn stateful conversations
 Chapter 09: Agent + Conversations API ← server-managed persistent threads
+Chapter 10: Agent + RunContext     ← typed runtime-local context injection
 ```
 
-Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 09, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
+Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 10, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
 
 ---
 
@@ -526,5 +569,5 @@ This project is built for **learning and experimentation**. Feel free to use, mo
 
 <p align="center">
   <sub>Built with ❤️ using OpenAI Agents SDK, Ollama, Groq & OpenAI</sub><br/>
-  <sub>From your first agent to server-managed conversations. 🤖→🧵</sub>
+  <sub>From your first agent to runtime-local context management. 🤖→🧩</sub>
 </p>
