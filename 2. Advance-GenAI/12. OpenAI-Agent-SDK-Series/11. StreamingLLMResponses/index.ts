@@ -1,48 +1,20 @@
-import { run, Agent, tool, RunContext } from '@openai/agents';
-import { groqModel } from './agent/openai';
-import z from 'zod'
+import { run, Agent } from "@openai/agents";
+import { groqModel } from '../04. Multi-agentSystem/agent/groq';
 
-interface MyContext {
-    userId: string,
-    userName: string
+const StoryAgent = new Agent({
+    name: "Story_Agent",
+    instructions: `You are a expert literature story teller, write a interesting story with dramatic and thrilling climax`,
+    model: groqModel
+})
 
-    fetchUserInfoFromDB: () => Promise<string>
+async function main(prompt: string) {
+    const response = await run(StoryAgent, prompt, { stream: true })
+    const stream = response.toTextStream()
+
+    for await (const chunk of stream) {
+        process.stdout.write(chunk) // if u do this it will right/good response whole streaming experince if you do not do this it will give response at once
+    }
+    console.log()
 }
 
-const getUserInfo = tool({
-    name: 'get_user_info',
-    description: 'Get the user info',
-    parameters: z.object({
-        // required empty object is mandatory if query is optional
-        query: z.string().optional().describe('Optional filter keyword for plans'),
-    }),
- 
-    execute: async (_, ctx?: RunContext<MyContext>): Promise<string | undefined> => {
-        return await ctx?.context.fetchUserInfoFromDB()
-        // return `Userid=${ctx?.context.userId}, \n 
-        //         UserName=${ctx?.context.userName}`
-    }
-})
-
-const CustomerQueryAgent = new Agent<MyContext>({
-    name: `Customer_Query_Resolver`,
-    model: groqModel,
-    tools: [getUserInfo],
-    instructions: ({ context }) => {
-        return `You are an expert agent in resolving the user's query`
-    }
-});
-
-
-async function main(query: string, ctx: MyContext) {
-    const response = await run(CustomerQueryAgent, query, {
-        context: ctx
-    })
-    console.log(`Response: ${response.finalOutput}`)
-};
-
-main(`Hey what is my name?`, {
-    userId: "1",
-    userName: "Sanidhya",
-    fetchUserInfoFromDB: async () => "UserId=1, UserName=Sanidhya"
-})
+main('Can u make a story of revenge of a poor farmer');
