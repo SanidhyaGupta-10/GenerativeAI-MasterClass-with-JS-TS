@@ -7,14 +7,25 @@ const StoryAgent = new Agent({
     model: groqModel
 })
 
-async function main(prompt: string) {
-    const response = await run(StoryAgent, prompt, { stream: true })
-    const stream = response.toTextStream()
+async function* streamOutput(prompt: string) {
+    const response = await run(StoryAgent, prompt, { stream: true });
+    const stream = response.toTextStream();
 
-    for await (const chunk of stream) {
-        process.stdout.write(chunk) // if u do this it will right/good response whole streaming experince if you do not do this it will give response at once
+    for await (const val of stream) {
+        yield { isCompleted: false, content: val };
     }
-    console.log()
+
+    yield { isCompleted: true, content: response.finalOutput };
+}
+
+async function main(query: string) {
+    for await (const o of streamOutput(query)) {
+        if (o.isCompleted) {
+            console.log(o.content);
+        } else {
+            process.stdout.write(o.content || '');
+        }
+    }
 }
 
 main('Can u make a story of revenge of a poor farmer');
