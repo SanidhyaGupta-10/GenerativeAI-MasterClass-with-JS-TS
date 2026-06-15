@@ -77,27 +77,36 @@ async function askUserForPermission(ques: string) {
 
 
 async function main(q: string) {
-    const res = await run(agent, q);
+    let res = await run(agent, q);
 
     let hasInterruptions = res.interruptions.length > 0;
     while (hasInterruptions) {
         const currentState = res.state;
-        for (const interruption of res.interruptions) {
-            if (interruption.type === 'tool_approval_item') {
-
-                await askUserForPermission(`
-                    Agent ${interruption.agent.name} asking for to approve the request ? 
+        for (const interupt of res.interruptions) {
+            if (interupt.type === 'tool_approval_item') {
+                const isAllowed = await askUserForPermission(`
+                    Agent ${interupt.agent.name} 
+                    asking for calling tool ${interupt.agent?.name} with args
+                    ${JSON.stringify(interupt.rawItem)}
                 `)
+                if (isAllowed) {
+                    currentState.approve(interupt)
+                } else {
+                    currentState.reject(interupt)
+                }
+
+                res = await run(agent, currentState);
+                hasInterruptions = res.interruptions?.length > 0;
             }
         }
     }
     console.log(res.interruptions);
 }
 
-main(`New York, 
+main(` 
     Los Angeles, 
-    Mumbai, 
-    New-Delhi, 
+    Tokyo, 
+    Singapore, 
     weathers of now, ( 
     give all cities weather in bullet form
     add emojis of weathers accordingly
