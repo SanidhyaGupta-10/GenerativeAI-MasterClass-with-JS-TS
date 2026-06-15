@@ -3,6 +3,7 @@ import axios from "axios";
 import { Agent, run, setTracingDisabled, tool } from "@openai/agents";
 import { groqModel } from "./agent/groq";
 import { sendEmail } from "./resend/resend.config";
+import readline from "node:readline/promises";
 
 const EMAIL = process.env.EMAIL_ADDRESS as string;
 
@@ -16,7 +17,7 @@ const getWeatherAgent = tool({
     parameters: z.object({
         city: z.string().describe("Enter city name")
     }),
-    
+
     execute: async ({ city }: { city: string }) => {
         const url = `https://wttr.in/${encodeURIComponent(city.toLowerCase())}?format=3`;
         const res = await axios.get(url, {
@@ -49,7 +50,7 @@ const sendEmailAgent = tool({
         console.log('sending email to', to);
         console.log('subject', subject);
         console.log('body', body);
-        await sendEmail(to,subject,body)
+        await sendEmail(to, subject, body)
     }
 })
 
@@ -62,9 +63,35 @@ const agent = new Agent({
     tools: [getWeatherAgent, sendEmailAgent]
 })
 
+async function askUserForPermission(ques: string) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+    const answer = await rl.question(`${ques} (y/n) :`);
+    const normalizedAnswer = answer.toLowerCase().trim();
+
+    rl.close();
+    return normalizedAnswer === 'y' || normalizedAnswer === 'yes';
+}
+
+
 async function main(q: string) {
     const res = await run(agent, q);
-    console.log(res.finalOutput);
+
+    let hasInterruptions = res.interruptions.length > 0;
+    while (hasInterruptions) {
+        const currentState = res.state;
+        for (const interruption of res.interruptions) {
+            if (interruption.type === 'tool_approval_item') {
+
+                await askUserForPermission(`
+                    Agent ${interruption.agent.name} asking for to approve the request ? 
+                `)
+            }
+        }
+    }
+    console.log(res.interruptions);
 }
 
 main(`New York, 
