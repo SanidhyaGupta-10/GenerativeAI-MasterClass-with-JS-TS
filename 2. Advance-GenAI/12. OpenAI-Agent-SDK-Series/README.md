@@ -27,7 +27,7 @@
 
 ## 📖 Overview
 
-This repository is an **11-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
+This repository is a **12-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
 
 > **Runtime:** [Bun](https://bun.sh) · **Language:** TypeScript · **LLM Providers:** Ollama (local), Groq (cloud) & OpenAI
 
@@ -46,6 +46,7 @@ This repository is an **11-part learning series** that takes you from zero to pr
 | Server-side conversations via OpenAI Conversations API | 09 |
 | Runtime-local context management & typed `RunContext` | 10 |
 | Real-time streaming with async generators & `toTextStream()` | 11 |
+| Human-in-the-loop approval, `needsApproval` & interruptions | 12 |
 
 ---
 
@@ -63,6 +64,7 @@ flowchart LR
     H --> I["09\nServer-Side\nConversations"]
     I --> J["10\nRuntime-Local\nContext"]
     J --> K["11\nStreaming\nLLM Responses"]
+    K --> L["12\nHuman-in-the\nLoop Pattern"]
 
     style A fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style B fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -75,6 +77,7 @@ flowchart LR
     style I fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#e2e8f0
     style J fill:#1e293b,stroke:#f97316,stroke-width:2px,color:#e2e8f0
     style K fill:#1e293b,stroke:#06d6a0,stroke-width:2px,color:#e2e8f0
+    style L fill:#1e293b,stroke:#e11d48,stroke-width:2px,color:#e2e8f0
 ```
 
 | # | Module | Key Concept | LLM Provider | Status |
@@ -90,6 +93,7 @@ flowchart LR
 | 09 | [Server-Side Conversations](./09.%20ServerConversation-ChatThreads/) | OpenAI Conversations API, server-managed threads & persistent memory | OpenAI | ✅ |
 | 10 | [Runtime-Local Context Management](./10.%20RuntimeLocal-ContextManagement/) | Typed `RunContext`, in-memory threads & context injection | OpenAI | ✅ |
 | 11 | [Streaming LLM Responses](./11.%20StreamingLLMResponses/) | Real-time streaming, async generators & `toTextStream()` | Groq | ✅ |
+| 12 | [Human-in-the-Loop Pattern](./12.%20HumanInLoopPattern/) | `needsApproval`, interruptions, approve/reject & Resend email | Groq | ✅ |
 
 ---
 
@@ -366,6 +370,34 @@ cd "11. StreamingLLMResponses" && bun install && bun run index.ts
 
 ---
 
+### 12. Human-in-the-Loop Pattern
+
+> **Path:** [`12. HumanInLoopPattern/`](./12.%20HumanInLoopPattern/)
+
+Add **human oversight** to sensitive agent operations — the agent pauses before executing tools marked with `needsApproval: true` and asks for explicit user confirmation via a CLI prompt. A Weather Agent fetches live data and sends email reports through [Resend](https://resend.com), but only after human approval.
+
+| Concept | Description |
+|---------|-------------|
+| `needsApproval: true` | Flag on tool definition that triggers an interruption instead of auto-executing |
+| `res.interruptions` | Array of pending tool calls awaiting human approval |
+| `state.approve()` / `reject()` | Accept or deny each pending tool call |
+| `res.state` | Serializable checkpoint — resume execution after approval decisions |
+
+```typescript
+// Tool pauses → user approves → agent resumes
+const state = res.state;
+state.approve(interrupt);  // or state.reject(interrupt)
+res = await run(agent, state);
+```
+
+```bash
+cd "12. HumanInLoopPattern" && bun install && bun run index.ts
+```
+
+**Requires:** `GROQ_API_KEY`, `RESEND_API_KEY`, `FROM_EMAIL`, `EMAIL_ADDRESS` in `.env`
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```mermaid
@@ -447,7 +479,16 @@ flowchart TD
         C11S -->|toTextStream| C11A
     end
 
-    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08 --> CH09 --> CH10 --> CH11
+    subgraph CH12["12 — Human-in-Loop"]
+        direction TB
+        C12A["🤖 Weather Agent"]
+        C12H["👤 Human Approval"]
+        C12E["📧 Email (Resend)"]
+        C12A -->|needsApproval| C12H
+        C12H -->|approve| C12E
+    end
+
+    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08 --> CH09 --> CH10 --> CH11 --> CH12
 
     style CH01 fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style CH02 fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -460,6 +501,7 @@ flowchart TD
     style CH09 fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#e2e8f0
     style CH10 fill:#1e293b,stroke:#f97316,stroke-width:2px,color:#e2e8f0
     style CH11 fill:#1e293b,stroke:#06d6a0,stroke-width:2px,color:#e2e8f0
+    style CH12 fill:#1e293b,stroke:#e11d48,stroke-width:2px,color:#e2e8f0
 ```
 
 ---
@@ -515,9 +557,16 @@ flowchart TD
 │   ├── index.ts
 │   └── agent/openai.ts
 │
-└── 11. StreamingLLMResponses/                 # 🌊 Real-time streaming
+├── 11. StreamingLLMResponses/                 # 🌊 Real-time streaming
+│   ├── index.ts
+│   └── agent/openai.ts
+│
+└── 12. HumanInLoopPattern/                    # 🛡️ Human-in-the-loop approval
     ├── index.ts
-    └── agent/openai.ts
+    ├── agent/groq.ts
+    └── resend/
+        ├── resend.config.ts
+        └── resend.template.ts
 ```
 
 ---
@@ -541,7 +590,7 @@ bun run index.ts
 
 ### Step 3 — Work Through Each Chapter
 
-Progress through the chapters in order (01 → 11) for the best learning experience. Each chapter builds on concepts from the previous one.
+Progress through the chapters in order (01 → 12) for the best learning experience. Each chapter builds on concepts from the previous one.
 
 ---
 
@@ -551,9 +600,9 @@ Progress through the chapters in order (01 → 11) for the best learning experie
 |-------------|:--------------:|:-------:|---------| 
 | [Bun](https://bun.sh) | v1.3+ | All | JavaScript/TypeScript runtime |
 | [Ollama](https://ollama.com) | Latest | 01–04 | Local LLM inference server |
-| [Groq Account](https://console.groq.com) | Free tier | 04–08, 11 | Cloud LLM provider |
+| [Groq Account](https://console.groq.com) | Free tier | 04–08, 11, 12 | Cloud LLM provider |
 | [OpenAI Account](https://platform.openai.com) | API key | 09, 10 | OpenAI LLM & Conversations API |
-| [Resend Account](https://resend.com) | Free tier | 02 | Email delivery service |
+| [Resend Account](https://resend.com) | Free tier | 02, 12 | Email delivery service |
 
 ### Ollama Models Required
 
@@ -566,11 +615,11 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 
 | Variable | Chapters | Description |
 |----------|:--------:|-------------|
-| `GROQ_API_KEY` | 04, 05, 06, 07, 08, 11 | Groq API key ([get one](https://console.groq.com/keys)) |
+| `GROQ_API_KEY` | 04, 05, 06, 07, 08, 11, 12 | Groq API key ([get one](https://console.groq.com/keys)) |
 | `OPENAI_API_KEY` | 09, 10 | OpenAI API key ([get one](https://platform.openai.com/api-keys)) |
-| `RESEND_API_KEY` | 02 | Resend API key ([get one](https://resend.com/api-keys)) |
-| `FROM_EMAIL` | 02 | Sender email for Resend |
-| `EMAIL_ADDRESS` | 02 | Recipient email for weather reports |
+| `RESEND_API_KEY` | 02, 12 | Resend API key ([get one](https://resend.com/api-keys)) |
+| `FROM_EMAIL` | 02, 12 | Sender email for Resend |
+| `EMAIL_ADDRESS` | 02, 12 | Recipient email for weather reports |
 
 ---
 
@@ -580,10 +629,10 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 |---------|---------|:--------:|
 | `@openai/agents` | OpenAI Agent SDK — core framework | All |
 | `openai` | OpenAI client (Ollama & Groq compatibility) | All |
-| `zod` | Runtime schema validation & type inference | 02–11 |
+| `zod` | Runtime schema validation & type inference | 02–12 |
 | `dotenv` | Environment variable loading | All |
-| `axios` | HTTP client (weather API) | 02, 04 |
-| `resend` | Email delivery service | 02 |
+| `axios` | HTTP client (weather API) | 02, 04, 12 |
+| `resend` | Email delivery service | 02, 12 |
 
 ---
 
@@ -601,9 +650,10 @@ Chapter 08: Agent + Threads ← multi-turn stateful conversations
 Chapter 09: Agent + Conversations API ← server-managed persistent threads
 Chapter 10: Agent + RunContext     ← typed runtime-local context injection
 Chapter 11: Agent + Streaming      ← real-time token-by-token output
+Chapter 12: Agent + Approval        ← human-in-the-loop interruptions
 ```
 
-Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 11, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
+Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 12, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
 
 ---
 
@@ -615,5 +665,5 @@ This project is built for **learning and experimentation**. Feel free to use, mo
 
 <p align="center">
   <sub>Built with ❤️ using OpenAI Agents SDK, Ollama, Groq & OpenAI</sub><br/>
-  <sub>From your first agent to real-time streaming. 🤖→🌊</sub>
+  <sub>From your first agent to human-in-the-loop safety. 🤖→🛡️</sub>
 </p>
