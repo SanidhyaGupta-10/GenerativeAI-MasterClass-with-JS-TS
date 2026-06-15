@@ -17,14 +17,15 @@
 
 ## 📖 Overview
 
-This chapter implements the **Human-in-the-Loop (HITL)** pattern — a critical safety mechanism that pauses the agent's execution and asks for human approval before running tools marked as sensitive.
+This chapter implements the **Human-in-the-Loop (HITL)** pattern — a critical safety mechanism that **pauses agent execution** and asks for human approval before running tools marked as sensitive.
 
 The project builds a **Weather Agent** that:
-1. Fetches live weather data for multiple cities using the `wttr.in` API
-2. Formats the results with emojis
-3. **Pauses and asks the user for permission** before sending the weather summary via email (using Resend)
+1. 🌤️ Fetches live weather data for multiple cities using the `wttr.in` API
+2. 📝 Formats the results with emojis in a clean bullet list
+3. ⏸️ **Pauses and asks the user for permission** before sending the weather summary via email
+4. 📧 Delivers the report through [Resend](https://resend.com) with a beautiful HTML template
 
-> **Key Insight:** The OpenAI Agent SDK supports `needsApproval: true` on any tool definition. When the agent tries to call an approved-required tool, the `run()` function returns with `interruptions` instead of executing the tool — giving you full control to approve or reject.
+> **Key Insight:** The OpenAI Agent SDK supports `needsApproval: true` on any tool definition. When the agent tries to call an approval-required tool, `run()` returns with `interruptions` instead of executing the tool — giving you full control to inspect, approve, or reject before anything happens.
 
 ---
 
@@ -34,12 +35,12 @@ The project builds a **Weather Agent** that:
 |---------|-------------|
 | `needsApproval: true` | Marks a tool as requiring human approval before execution |
 | `res.interruptions` | Array of pending tool calls that need user approval |
-| `res.state` | Serializable run state — used to resume after approval/rejection |
-| `currentState.approve()` | Approves a specific interruption, allowing the tool to execute |
-| `currentState.reject()` | Rejects a specific interruption, preventing the tool from executing |
-| `tool_approval_item` | The interruption type for tools requiring approval |
+| `res.state` | Serializable run state — used to resume execution after approval/rejection |
+| `state.approve(interrupt)` | Approves a specific interruption, allowing the tool to execute |
+| `state.reject(interrupt)` | Rejects a specific interruption, skipping the tool |
+| `tool_approval_item` | The interruption type for tools requiring human approval |
 | `readline/promises` | Node.js built-in module for interactive CLI prompts |
-| `Resend` | Email delivery service for sending transactional emails |
+| `Resend` | Email delivery service for transactional emails |
 
 ---
 
@@ -49,17 +50,17 @@ The project builds a **Weather Agent** that:
 flowchart TD
     A["📝 User Prompt\n(cities + email request)"] --> B
 
-    B["🤖 Weather Agent\n(Groq — gpt-oss-120b)"]
-    B -->|"Auto-approved"| C["🌤️ get_Weather Tool\n(wttr.in API)"]
+    B["🤖 WeatherAgent\n(Groq — gpt-oss-120b)"]
+    B -->|"Auto-approved"| C["🌤️ get_weather\n(wttr.in API)\nNo approval needed"]
     C -->|"Weather data"| B
 
-    B -->|"needsApproval: true"| D["⏸️ Interruption\n(send_email paused)"]
+    B -->|"needsApproval: true"| D["⏸️ Interruption\nsend_email paused"]
     D -->|"CLI prompt"| E["👤 Human Review\n(y/n approval)"]
 
-    E -->|"✅ Approved"| F["📧 send_email Tool\n(Resend API)"]
-    E -->|"❌ Rejected"| G["🚫 Tool Skipped\nAgent continues without sending"]
+    E -->|"✅ Approved"| F["📧 send_email\n(Resend API)\nHTML template email"]
+    E -->|"❌ Rejected"| G["🚫 Tool Skipped\nAgent continues"]
 
-    F -->|"Email sent"| H["✅ Final Output"]
+    F --> H["✅ Final Output"]
     G --> H
 
     style A fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
@@ -78,13 +79,13 @@ flowchart TD
 
 ```
 12. HumanInLoopPattern/
-├── index.ts                  # Main entry — agent, tools, approval loop
+├── index.ts                  # Main entry — agent, tools, approval loop & console UI
 ├── agent/
 │   └── groq.ts               # Groq model provider configuration
 ├── resend/
-│   ├── resend.config.ts       # Resend email client & sendEmail function
-│   └── resend.template.ts     # HTML email template
-├── .env                       # Environment variables (API keys, email)
+│   ├── resend.config.ts       # Resend email client & sendEmail helper
+│   └── resend.template.ts     # Dark-themed HTML email template
+├── .env                       # Environment variables (API keys, email addresses)
 ├── .gitignore
 ├── package.json
 ├── tsconfig.json
@@ -115,98 +116,162 @@ export const groqModel = new OpenAIChatCompletionsModel(
 )
 ```
 
-### 2. Weather Tool — `get_Weather`
+### 2. Structured Console Logger
+
+A clean logging utility that gives structured, emoji-tagged output for every stage:
+
+```typescript
+const log = {
+    tool:     (msg: string) => console.log(`\n🔧 [Tool Call]  ${msg}`),
+    result:   (msg: string) => console.log(`   ✅ Result:   ${msg.trim()}`),
+    approval: (msg: string) => console.log(`\n⏸️  [Approval Required]\n${msg}`),
+    approved: ()            => console.log(`   ✅ User approved — executing tool...`),
+    rejected: ()            => console.log(`   ❌ User rejected — skipping tool.`),
+    success:  (msg: string) => console.log(`\n🎉 [Done]  ${msg}`),
+    error:    (msg: string) => console.error(`\n💥 [Error]  ${msg}`),
+    divider:  ()            => console.log(`${"─".repeat(60)}`),
+};
+```
+
+### 3. Weather Tool — `get_weather`
 
 A standard tool (no approval required) that fetches live weather from `wttr.in`:
 
 ```typescript
-const getWeatherAgent = tool({
-    name: 'get_Weather',
-    description: `returns the current weather information for the given city`,
+const getWeatherTool = tool({
+    name: "get_weather",
+    description: "Returns the current weather information for the given city.",
     parameters: z.object({
-        city: z.string().describe("Enter city name")
+        city: z.string().describe("The name of the city to get weather for"),
     }),
     execute: async ({ city }) => {
+        log.tool(`get_weather("${city}")`);
         const url = `https://wttr.in/${encodeURIComponent(city.toLowerCase())}?format=3`;
-        const res = await axios.get(url, { headers: { Accept: 'text/plain' } });
-        return `The current weather in ${city} is ${res.data}`;
-    }
+        const res = await axios.get(url, { headers: { Accept: "text/plain" } });
+        log.result(res.data);
+        return `The current weather in ${city} is ${res.data.trim()}`;
+    },
 });
 ```
 
-### 3. Email Tool (Approval Required) — `send_email`
+### 4. Email Tool (Approval Required) — `send_email`
 
-The key difference — `needsApproval: true` pauses execution and waits for human confirmation:
+The key difference — **`needsApproval: true`** pauses execution and waits for human confirmation:
 
 ```typescript
-const sendEmailAgent = tool({
-    name: 'send_email',
-    description: `Use this tool to send email to user at the end of the process`,
-    needsApproval: true,   // ← This is the magic flag
+const sendEmailTool = tool({
+    name: "send_email",
+    description: "Sends an email to the specified recipient.",
+    needsApproval: true,   // ← The magic flag — triggers interruption
     parameters: z.object({
-        to: z.string(),
-        subject: z.string(),
-        body: z.string(),
+        to: z.string().describe("The recipient email address"),
+        subject: z.string().describe("Email subject line"),
+        body: z.string().describe("Email body content"),
     }),
     execute: async ({ to, subject, body }) => {
         await sendEmail(to, subject, body);
-    }
-})
+        return `Email sent successfully to ${to}`;
+    },
+});
 ```
 
-### 4. Human Approval Prompt — `askUserForPermission()`
+### 5. Human Approval Prompt — `askUserForApproval()`
 
 Uses Node.js `readline/promises` to present a CLI yes/no prompt:
 
 ```typescript
-async function askUserForPermission(ques: string) {
+async function askUserForApproval(prompt: string): Promise<boolean> {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
     });
-    const answer = await rl.question(`${ques} (y/n) :`);
+    const answer = await rl.question(`${prompt}\n👉 Approve? (y/n): `);
     rl.close();
-    return answer.toLowerCase().trim() === 'y' || answer.toLowerCase().trim() === 'yes';
+    const normalized = answer.toLowerCase().trim();
+    return normalized === "y" || normalized === "yes";
 }
 ```
 
-### 5. Interruption Loop — `main()`
+### 6. Interruption Loop — `main()`
 
-The core pattern — run the agent, check for interruptions, ask user, then resume:
+The core HITL pattern — run the agent, check for interruptions, ask user for each one, then **resume**:
 
 ```typescript
-async function main(q: string) {
-    let res = await run(agent, q);
+async function main(query: string) {
+    let result = await run(weatherAgent, query);
 
-    let hasInterruptions = res.interruptions.length > 0;
-    while (hasInterruptions) {
-        const currentState = res.state;
-        for (const interupt of res.interruptions) {
-            if (interupt.type === 'tool_approval_item') {
-                const isAllowed = await askUserForPermission(`
-                    Agent ${interupt.agent.name} 
-                    asking for calling tool ${interupt.agent?.name} with args
-                    ${JSON.stringify(interupt.rawItem)}
-                `);
+    while (result.interruptions.length > 0) {
+        const currentState = result.state;
+
+        for (const interrupt of result.interruptions) {
+            if (interrupt.type === "tool_approval_item") {
+                // Parse and display the tool call details
+                const toolName = interrupt.rawItem.name ?? "unknown_tool";
+                const toolArgs = JSON.parse(interrupt.rawItem.arguments ?? "{}");
+
+                log.approval(`   Agent: ${interrupt.agent.name}\n   Tool: ${toolName}`);
+
+                const isAllowed = await askUserForApproval("");
+
                 if (isAllowed) {
-                    currentState.approve(interupt);  // ✅ Allow
+                    currentState.approve(interrupt);   // ✅ Allow
                 } else {
-                    currentState.reject(interupt);   // ❌ Deny
+                    currentState.reject(interrupt);    // ❌ Deny
                 }
-                res = await run(agent, currentState); // Resume with decision
-                hasInterruptions = res.interruptions?.length > 0;
             }
         }
+
+        // Resume agent with ALL approvals/rejections applied at once
+        result = await run(weatherAgent, currentState);
     }
+
+    log.success("Agent finished.");
+    console.log(`\n📋 Final Output:\n${result.finalOutput}`);
 }
 ```
 
-> **How does the interruption loop work?**
-> 1. `run()` executes until it hits a tool with `needsApproval: true`
-> 2. Instead of calling the tool, it returns with `res.interruptions` populated
-> 3. You inspect each interruption, ask the user, and call `approve()` or `reject()`
-> 4. Call `run()` again with the updated `currentState` to resume execution
-> 5. Repeat until no more interruptions remain
+> **⚠️ Important:** The `run()` call is placed **outside** the `for` loop. This ensures all pending interruptions are approved/rejected before resuming — otherwise the state gets overwritten mid-iteration.
+
+---
+
+## 💻 Sample Output
+
+```
+🤖 WeatherAgent starting...
+────────────────────────────────────────────────────────────
+
+🔧 [Tool Call]  get_weather("Los Angeles")
+   ✅ Result:   Los Angeles: ☁️  +18°C
+
+🔧 [Tool Call]  get_weather("Tokyo")
+   ✅ Result:   Tokyo: 🌤️  +20°C
+
+🔧 [Tool Call]  get_weather("Singapore")
+   ✅ Result:   Singapore: 🌤️  +29°C
+
+⏸️  [Approval Required]
+   Agent:  WeatherAgent
+   Tool:   send_email
+   Args:
+           {
+             "to": "user@example.com",
+             "subject": "Current Weather Update",
+             "body": "• Los Angeles: ☁️ +18°C\n• Tokyo: 🌤️ +20°C\n• Singapore: 🌤️ +29°C"
+           }
+
+👉 Approve? (y/n): y
+   ✅ User approved — executing tool...
+
+🔧 [Tool Call]  send_email("user@example.com")
+   📨 Subject: Current Weather Update
+
+────────────────────────────────────────────────────────────
+
+🎉 [Done]  Agent finished.
+
+📋 Final Output:
+I've sent the weather summary to your email!
+```
 
 ---
 
@@ -238,7 +303,7 @@ FROM_EMAIL=Your Name <you@yourdomain.com>
 EMAIL_ADDRESS=recipient@example.com
 ```
 
-> Get a free Groq API key at [console.groq.com/keys](https://console.groq.com/keys)
+> Get a free Groq API key at [console.groq.com/keys](https://console.groq.com/keys)  
 > Get a Resend API key at [resend.com](https://resend.com)
 
 ### 3. Run
@@ -250,19 +315,19 @@ bun run index.ts
 The agent will:
 1. Fetch weather for Los Angeles, Tokyo, and Singapore
 2. **Pause and ask you** whether to send the email
-3. If you type `y` — the email is sent via Resend
-4. If you type `n` — the email is skipped
+3. Type `y` → email is sent via Resend with a beautiful HTML template
+4. Type `n` → email is skipped, agent continues gracefully
 
 ---
 
 ## 🔑 Key Takeaways
 
-1. **`needsApproval: true`** is all it takes to make any tool require human consent — one flag on the tool definition
-2. **Interruptions** are the SDK's way of pausing execution — they give you an array of pending actions to approve or reject
-3. **`res.state`** captures the full execution state, so you can resume exactly where the agent left off after approval
-4. **`approve()` and `reject()`** are called on the state object, not the run result — the state is the resumable checkpoint
-5. **The while loop pattern** handles multiple approval-required tools in sequence — the agent may trigger several during one run
-6. **Safety-first design** — sensitive operations (email, payments, database writes) should always use this pattern in production
+1. **`needsApproval: true`** is all it takes to make any tool require human consent — a single flag on the tool definition
+2. **Interruptions** are the SDK's way of pausing execution — they return an array of pending tool calls to approve or reject
+3. **`res.state`** captures the full execution checkpoint, so you can resume exactly where the agent left off
+4. **Process all interruptions before resuming** — call `approve()` / `reject()` on every pending interruption, then call `run()` once with the updated state
+5. **The while loop pattern** handles chains of approval-required tools — the agent may trigger several during one run
+6. **Safety-first design** — sensitive operations (email, payments, database writes, deletions) should always use this pattern in production
 
 ---
 

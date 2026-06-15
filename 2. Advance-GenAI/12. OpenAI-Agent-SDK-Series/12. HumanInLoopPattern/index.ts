@@ -26,9 +26,10 @@ const getWeatherAgent = tool({
             }
         });
         const result = res.data;
-        console.log('Tool Calling 🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖🤖')
-        console.log('result', result);
-        console.log(`function called for this city ${city}`)
+        console.log(`\n🌍 ─── Weather Tool Called ───────────────────────`)
+        console.log(`   🔧 City:    ${city}`)
+        console.log(`   ✅ Result:  ${result.trim()}`)
+        console.log(`   ─────────────────────────────────────────────\n`)
         return `
             The current weather in ${city} is ${result}
         `
@@ -47,10 +48,13 @@ const sendEmailAgent = tool({
         body: z.string(),
     }),
     execute: async ({ to, subject, body }: { to: string, subject: string, body: string }) => {
-        console.log('sending email to', to);
-        console.log('subject', subject);
-        console.log('body', body);
+        console.log(`\n📧 ─── Email Tool Executing ─────────────────────`)
+        console.log(`   📨 To:      ${to}`)
+        console.log(`   📝 Subject: ${subject}`)
+        console.log(`   📄 Body:    ${body.substring(0, 80)}${body.length > 80 ? '...' : ''}`)
         await sendEmail(to, subject, body)
+        console.log(`   ✅ Email sent successfully!`)
+        console.log(`   ─────────────────────────────────────────────\n`)
     }
 })
 
@@ -84,23 +88,29 @@ async function main(q: string) {
         const currentState = res.state;
         for (const interupt of res.interruptions) {
             if (interupt.type === 'tool_approval_item') {
+                const toolName = (interupt.rawItem as any).name;
+                const toolArgs = JSON.stringify((interupt.rawItem as any).arguments);
                 const isAllowed = await askUserForPermission(`
-                    Agent ${interupt.agent.name} 
-                    asking for calling tool ${interupt.agent?.name} with args
-                    ${JSON.stringify(interupt.rawItem)}
-                `)
+⏸️  ─── Approval Required ─────────────────────────
+   🤖 Agent:  ${interupt.agent.name}
+   🔧 Tool:   ${toolName}
+   📦 Args:   ${toolArgs}
+   ─────────────────────────────────────────────────`)
                 if (isAllowed) {
                     currentState.approve(interupt)
                 } else {
                     currentState.reject(interupt)
                 }
-
-                res = await run(agent, currentState);
-                hasInterruptions = res.interruptions?.length > 0;
             }
         }
+
+        res = await run(agent, currentState);
+        hasInterruptions = res.interruptions?.length > 0;
     }
-    console.log(res.interruptions);
+
+    if (res.finalOutput) {
+        console.log('\n📋 Final Output:', res.finalOutput);
+    }
 }
 
 main(` 
@@ -112,4 +122,8 @@ main(`
     add emojis of weathers accordingly
     and send all weather to ${EMAIL} using send email tool after all process.
     send all data to my email address only.
-    )`);
+    )`).catch((err) => {
+    console.error('💥 Error:', err instanceof Error ? err.message : String(err));
+    process.exit(1);
+});
+
