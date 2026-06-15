@@ -194,7 +194,7 @@ You'll see the story appear **token by token** in real-time, just like ChatGPT's
 
 | Previous | Series Home | Next |
 |:--------:|:-----------:|:----:|
-| [10. Runtime-Local Context](../10.%20RuntimeLocal-ContextManagement/) | [📚 All Chapters](../README.md) | _Coming Soon_ |
+| [10. Runtime-Local Context](../10.%20RuntimeLocal-ContextManagement/) | [📚 All Chapters](../README.md) | [12. Human-in-the-Loop](../12.%20HumanInLoopPattern/) |
 
 ---
 
