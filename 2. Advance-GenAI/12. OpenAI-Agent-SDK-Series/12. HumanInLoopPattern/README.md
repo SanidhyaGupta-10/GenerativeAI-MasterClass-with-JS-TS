@@ -349,7 +349,7 @@ The agent will:
 
 | Previous | Series Home | Next |
 |:--------:|:-----------:|:----:|
-| [11. Streaming LLM Responses](../11.%20StreamingLLMResponses/) | [📚 All Chapters](../README.md) | _Coming Soon_ |
+| [11. Streaming LLM Responses](../11.%20StreamingLLMResponses/) | [📚 All Chapters](../README.md) | [13. MCP — Model Context Protocol](../13.%20MCP-ModelContextProtocol/) |
 
 ---
 

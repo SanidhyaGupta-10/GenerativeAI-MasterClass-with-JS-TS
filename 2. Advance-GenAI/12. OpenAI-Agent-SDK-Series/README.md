@@ -27,7 +27,7 @@
 
 ## 📖 Overview
 
-This repository is a **12-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
+This repository is a **13-part learning series** that takes you from zero to production-ready AI agent architectures using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) (`@openai/agents`) with **TypeScript** and **Bun**. Each chapter builds on the previous one, progressively introducing new concepts.
 
 > **Runtime:** [Bun](https://bun.sh) · **Language:** TypeScript · **LLM Providers:** Ollama (local), Groq (cloud) & OpenAI
 
@@ -47,6 +47,7 @@ This repository is a **12-part learning series** that takes you from zero to pro
 | Runtime-local context management & typed `RunContext` | 10 |
 | Real-time streaming with async generators & `toTextStream()` | 11 |
 | Human-in-the-loop approval, `needsApproval` & interruptions | 12 |
+| MCP (Model Context Protocol) — hosted & streamable HTTP MCP servers | 13 |
 
 ---
 
@@ -65,6 +66,7 @@ flowchart LR
     I --> J["10\nRuntime-Local\nContext"]
     J --> K["11\nStreaming\nLLM Responses"]
     K --> L["12\nHuman-in-the\nLoop Pattern"]
+    L --> M["13\nMCP\nModel Context Protocol"]
 
     style A fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style B fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -78,6 +80,7 @@ flowchart LR
     style J fill:#1e293b,stroke:#f97316,stroke-width:2px,color:#e2e8f0
     style K fill:#1e293b,stroke:#06d6a0,stroke-width:2px,color:#e2e8f0
     style L fill:#1e293b,stroke:#e11d48,stroke-width:2px,color:#e2e8f0
+    style M fill:#1e293b,stroke:#0ea5e9,stroke-width:2px,color:#e2e8f0
 ```
 
 | # | Module | Key Concept | LLM Provider | Status |
@@ -94,6 +97,7 @@ flowchart LR
 | 10 | [Runtime-Local Context Management](./10.%20RuntimeLocal-ContextManagement/) | Typed `RunContext`, in-memory threads & context injection | OpenAI | ✅ |
 | 11 | [Streaming LLM Responses](./11.%20StreamingLLMResponses/) | Real-time streaming, async generators & `toTextStream()` | Groq | ✅ |
 | 12 | [Human-in-the-Loop Pattern](./12.%20HumanInLoopPattern/) | `needsApproval`, interruptions, approve/reject & Resend email | Groq | ✅ |
+| 13 | [MCP — Model Context Protocol](./13.%20MCP-ModelContextProtocol/) | Hosted MCP, Streamable HTTP MCP & remote tool discovery | OpenAI + Groq | ✅ |
 
 ---
 
@@ -398,6 +402,32 @@ cd "12. HumanInLoopPattern" && bun install && bun run index.ts
 
 ---
 
+### 13. MCP — Model Context Protocol
+
+> **Path:** [`13. MCP-ModelContextProtocol/`](./13.%20MCP-ModelContextProtocol/)
+
+Connect your agents to external tools and data sources at runtime using **MCP (Model Context Protocol)** — the open standard for LLM-tool interoperability. Demonstrates two approaches: **Hosted MCP** (OpenAI handles the connection server-side) and **Streamable HTTP MCP** (your code manages the connection, works with any provider).
+
+| Concept | Description |
+|---------|-------------|
+| `hostedMcpTool()` | OpenAI connects to the MCP server on your behalf (Responses API only) |
+| `MCPServerStreamableHttp` | Client-side MCP connection — works with any provider (Groq, Ollama, etc.) |
+| Hosted vs Streamable | Hosted = zero-config but OpenAI-only; Streamable = flexible but you manage `connect()`/`close()` |
+| [GitMCP](https://gitmcp.io) | Turns any GitHub repo into an MCP endpoint for documentation queries |
+
+```
+Hosted:     Client → OpenAI → MCP Server → Response → Client
+Streamable: Client → OpenAI ↔ Client → MCP Server → Response → Client
+```
+
+```bash
+cd "13. MCP-ModelContextProtocol" && bun install && bun run streamableMCP.ts
+```
+
+**Requires:** `OPENAI_API_KEY` and/or `GROQ_API_KEY` in `.env`
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```mermaid
@@ -488,7 +518,16 @@ flowchart TD
         C12H -->|approve| C12E
     end
 
-    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08 --> CH09 --> CH10 --> CH11 --> CH12
+    subgraph CH13["13 — MCP"]
+        direction TB
+        C13A["🤖 MCP Assistant"]
+        C13H["🔌 Hosted MCP"]
+        C13S["🌐 Streamable HTTP"]
+        C13A -->|hostedMcpTool| C13H
+        C13A -->|MCPServerStreamableHttp| C13S
+    end
+
+    CH01 --> CH02 --> CH03 --> CH04 --> CH05 --> CH06 --> CH07 --> CH08 --> CH09 --> CH10 --> CH11 --> CH12 --> CH13
 
     style CH01 fill:#1e293b,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
     style CH02 fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
@@ -502,6 +541,7 @@ flowchart TD
     style CH10 fill:#1e293b,stroke:#f97316,stroke-width:2px,color:#e2e8f0
     style CH11 fill:#1e293b,stroke:#06d6a0,stroke-width:2px,color:#e2e8f0
     style CH12 fill:#1e293b,stroke:#e11d48,stroke-width:2px,color:#e2e8f0
+    style CH13 fill:#1e293b,stroke:#0ea5e9,stroke-width:2px,color:#e2e8f0
 ```
 
 ---
@@ -561,12 +601,17 @@ flowchart TD
 │   ├── index.ts
 │   └── agent/openai.ts
 │
-└── 12. HumanInLoopPattern/                    # 🛡️ Human-in-the-loop approval
+├── 12. HumanInLoopPattern/                    # 🛡️ Human-in-the-loop approval
+│   ├── index.ts
+│   ├── agent/groq.ts
+│   └── resend/
+│       ├── resend.config.ts
+│       └── resend.template.ts
+│
+└── 13. MCP-ModelContextProtocol/              # 🔌 MCP — hosted & streamable HTTP
     ├── index.ts
-    ├── agent/groq.ts
-    └── resend/
-        ├── resend.config.ts
-        └── resend.template.ts
+    ├── streamableMCP.ts
+    └── agent/groq.ts
 ```
 
 ---
@@ -590,7 +635,7 @@ bun run index.ts
 
 ### Step 3 — Work Through Each Chapter
 
-Progress through the chapters in order (01 → 12) for the best learning experience. Each chapter builds on concepts from the previous one.
+Progress through the chapters in order (01 → 13) for the best learning experience. Each chapter builds on concepts from the previous one.
 
 ---
 
@@ -601,7 +646,7 @@ Progress through the chapters in order (01 → 12) for the best learning experie
 | [Bun](https://bun.sh) | v1.3+ | All | JavaScript/TypeScript runtime |
 | [Ollama](https://ollama.com) | Latest | 01–04 | Local LLM inference server |
 | [Groq Account](https://console.groq.com) | Free tier | 04–08, 11, 12 | Cloud LLM provider |
-| [OpenAI Account](https://platform.openai.com) | API key | 09, 10 | OpenAI LLM & Conversations API |
+| [OpenAI Account](https://platform.openai.com) | API key | 09, 10, 13 | OpenAI LLM, Conversations API & hosted MCP |
 | [Resend Account](https://resend.com) | Free tier | 02, 12 | Email delivery service |
 
 ### Ollama Models Required
@@ -615,8 +660,8 @@ ollama pull qwen2.5:7b      # Chapters 02, 03, 04
 
 | Variable | Chapters | Description |
 |----------|:--------:|-------------|
-| `GROQ_API_KEY` | 04, 05, 06, 07, 08, 11, 12 | Groq API key ([get one](https://console.groq.com/keys)) |
-| `OPENAI_API_KEY` | 09, 10 | OpenAI API key ([get one](https://platform.openai.com/api-keys)) |
+| `GROQ_API_KEY` | 04, 05, 06, 07, 08, 11, 12, 13 | Groq API key ([get one](https://console.groq.com/keys)) |
+| `OPENAI_API_KEY` | 09, 10, 13 | OpenAI API key ([get one](https://platform.openai.com/api-keys)) |
 | `RESEND_API_KEY` | 02, 12 | Resend API key ([get one](https://resend.com/api-keys)) |
 | `FROM_EMAIL` | 02, 12 | Sender email for Resend |
 | `EMAIL_ADDRESS` | 02, 12 | Recipient email for weather reports |
@@ -651,9 +696,10 @@ Chapter 09: Agent + Conversations API ← server-managed persistent threads
 Chapter 10: Agent + RunContext     ← typed runtime-local context injection
 Chapter 11: Agent + Streaming      ← real-time token-by-token output
 Chapter 12: Agent + Approval        ← human-in-the-loop interruptions
+Chapter 13: Agent + MCP              ← external tool discovery via Model Context Protocol
 ```
 
-Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 12, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
+Each chapter introduces **one new concept** while reinforcing the previous ones. By Chapter 13, you'll have covered the full spectrum of the OpenAI Agent SDK's capabilities.
 
 ---
 
@@ -665,5 +711,5 @@ This project is built for **learning and experimentation**. Feel free to use, mo
 
 <p align="center">
   <sub>Built with ❤️ using OpenAI Agents SDK, Ollama, Groq & OpenAI</sub><br/>
-  <sub>From your first agent to human-in-the-loop safety. 🤖→🛡️</sub>
+  <sub>From your first agent to MCP-powered tool discovery. 🤖→🔌</sub>
 </p>
